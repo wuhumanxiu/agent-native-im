@@ -206,6 +206,7 @@ If `/api/v1/ws` falls through a generic `/api/` proxy block without the upgrade 
 Use these documents as the current formal ANI baseline:
 
 - [docs/PRODUCT_BASELINE.md](docs/PRODUCT_BASELINE.md)
+- [docs/ANI_AGENT_INTEGRATION_SPEC_V1.md](docs/ANI_AGENT_INTEGRATION_SPEC_V1.md)
 - [docs/user-stories.md](docs/user-stories.md)
 - [test-cases.md](test-cases.md)
 

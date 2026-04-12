@@ -1,6 +1,6 @@
 # ANI Product Baseline
 
-Last updated: 2026-03-29
+Last updated: 2026-04-04
 
 This document is the index for the current ANI product baseline across backend, web, mobile, and OpenClaw integration.
 
@@ -24,14 +24,22 @@ Primary source:
 
 - [user-stories.md](/Users/donaldford/code/SuperBody/dev/agent-native-im/docs/user-stories.md)
 - [test-cases.md](/Users/donaldford/code/SuperBody/dev/agent-native-im/test-cases.md)
+- [ANI_AGENT_INTEGRATION_SPEC_V1.md](/Users/donaldford/code/SuperBody/dev/agent-native-im/docs/ANI_AGENT_INTEGRATION_SPEC_V1.md)
+- [MESSAGING_CONSISTENCY_DRAFT_2026-04-04.md](/Users/donaldford/code/SuperBody/dev/agent-native-im/docs/MESSAGING_CONSISTENCY_DRAFT_2026-04-04.md)
+- [BOT_SOCIAL_ACCESS_SPEC_2026-04-04.md](/Users/donaldford/code/SuperBody/dev/agent-native-im/docs/BOT_SOCIAL_ACCESS_SPEC_2026-04-04.md)
+- [BOT_SOCIAL_ACCESS_TASK_BRIEF_2026-04-04.md](/Users/donaldford/code/SuperBody/dev/agent-native-im/docs/BOT_SOCIAL_ACCESS_TASK_BRIEF_2026-04-04.md)
 
 This layer defines platform-level truth:
 
 - entity identity contract (`public_id`, `bot_id`)
 - conversation and attachment semantics
 - inbox / friendship / bot access policy rules
+- bot social access policy rules for platform visibility, platform interaction, and external access
 - message lifecycle and protected file behavior
 - OpenClaw onboarding endpoints and access pack behavior
+- messaging consistency rules for inbox snapshot, presence, and navigation badges
+- acting-entity rules for owned bots initiating friendships and direct conversations
+- the platform-level integration contract for future external agent runtimes
 
 ### 2. Web and PWA behavior
 
@@ -103,9 +111,11 @@ These rules should remain aligned everywhere:
 
 - new bots require valid `bot_id`
 - entities expose stable `public_id`
+- bots/services expose explicit `friend_request_policy` and `direct_message_policy`
 - ANI files are protected resources, not naked public URLs
 - inbox remains a first-class system event surface
 - friend-first direct chat flows remain available
+- owned bots may act as first-class ANI entities in friendship and direct-conversation flows
 - OpenClaw onboarding defaults to `openclaw-ani-installer`
 
 ## Document Governance
