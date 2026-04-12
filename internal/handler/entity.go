@@ -16,10 +16,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"github.com/wzfukui/agent-native-im/internal/auth"
 	"github.com/wzfukui/agent-native-im/internal/model"
 	"github.com/wzfukui/agent-native-im/internal/ws"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -322,12 +322,16 @@ func (s *Server) HandleEntityStatus(c *gin.Context) {
 		return
 	}
 	resp := gin.H{
-		"entity_id": entity.ID,
-		"name":      entity.DisplayName,
-		"online":    s.Hub.IsOnline(entityID),
+		"entity_id":      entity.ID,
+		"name":           entity.DisplayName,
+		"online":         s.Hub.IsOnline(entityID),
+		"presence_state": s.Hub.PresenceState(entityID),
 	}
 	if lastSeen, ok := s.Hub.LastSeen(entityID); ok {
 		resp["last_seen"] = lastSeen
+	}
+	if lastConnected, ok := s.Hub.LastConnected(entityID); ok {
+		resp["last_connected_at"] = lastConnected
 	}
 	OK(c, http.StatusOK, resp)
 }
@@ -435,6 +439,7 @@ func (s *Server) HandleEntitySelfCheck(c *gin.Context) {
 
 	isOnline := s.Hub.IsOnline(entityID)
 	ready := target.Status == "active" && len(apiKeyCreds) > 0
+	presenceState := s.Hub.PresenceState(entityID)
 
 	recommendations := make([]string, 0, 3)
 	if target.Status != "active" {
@@ -452,6 +457,7 @@ func (s *Server) HandleEntitySelfCheck(c *gin.Context) {
 		"entity_name":    target.DisplayName,
 		"status":         target.Status,
 		"online":         isOnline,
+		"presence_state": presenceState,
 		"ready":          ready,
 		"has_api_key":    len(apiKeyCreds) > 0,
 		"recommendation": recommendations,
@@ -470,16 +476,18 @@ func (s *Server) HandleEntityDiagnostics(c *gin.Context) {
 	devices := s.Hub.GetConnectedDevices(entityID)
 
 	resp := gin.H{
-		"entity_id":               entityID,
-		"entity_name":             target.DisplayName,
-		"status":                  target.Status,
-		"online":                  len(devices) > 0,
-		"connections":             len(devices),
-		"disconnect_count":        s.Hub.DisconnectCount(entityID),
-		"forced_disconnect_count": s.Hub.ForcedDisconnectCount(entityID),
-		"devices":                 devices,
+		"entity_id":                      entityID,
+		"entity_name":                    target.DisplayName,
+		"status":                         target.Status,
+		"online":                         len(devices) > 0,
+		"presence_state":                 s.Hub.PresenceState(entityID),
+		"connections":                    len(devices),
+		"disconnect_count":               s.Hub.DisconnectCount(entityID),
+		"forced_disconnect_count":        s.Hub.ForcedDisconnectCount(entityID),
+		"recently_online_window_seconds": 600,
+		"devices":                        devices,
 		"credentials": gin.H{
-			"has_api_key":   len(apiKeyCreds) > 0,
+			"has_api_key": len(apiKeyCreds) > 0,
 		},
 		"hub": gin.H{
 			"total_ws_connections": s.Hub.ConnectionCount(),
@@ -487,6 +495,9 @@ func (s *Server) HandleEntityDiagnostics(c *gin.Context) {
 	}
 	if lastSeen, ok := s.Hub.LastSeen(entityID); ok {
 		resp["last_seen"] = lastSeen
+	}
+	if lastConnected, ok := s.Hub.LastConnected(entityID); ok {
+		resp["last_connected_at"] = lastConnected
 	}
 	OK(c, http.StatusOK, resp)
 }
@@ -658,15 +669,15 @@ func (s *Server) HandleUpdateEntity(c *gin.Context) {
 	}
 
 	var req struct {
-		DisplayName        *string                `json:"display_name"`
-		AvatarURL          *string                `json:"avatar_url"`
-		Discoverability    *string                `json:"discoverability"`
-		FriendRequestPolicy *string               `json:"friend_request_policy"`
-		DirectMessagePolicy *string               `json:"direct_message_policy"`
-		AllowNonFriendChat *bool                  `json:"allow_non_friend_chat"`
-		RequireAccessPassword *bool               `json:"require_access_password"`
-		AccessPassword     *string                `json:"access_password"`
-		Metadata           map[string]interface{} `json:"metadata"`
+		DisplayName           *string                `json:"display_name"`
+		AvatarURL             *string                `json:"avatar_url"`
+		Discoverability       *string                `json:"discoverability"`
+		FriendRequestPolicy   *string                `json:"friend_request_policy"`
+		DirectMessagePolicy   *string                `json:"direct_message_policy"`
+		AllowNonFriendChat    *bool                  `json:"allow_non_friend_chat"`
+		RequireAccessPassword *bool                  `json:"require_access_password"`
+		AccessPassword        *string                `json:"access_password"`
+		Metadata              map[string]interface{} `json:"metadata"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		Fail(c, http.StatusBadRequest, err.Error())

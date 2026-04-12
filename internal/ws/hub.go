@@ -40,10 +40,13 @@ type Hub struct {
 	OnPush PushFunc
 
 	lastSeen        map[int64]time.Time
+	lastConnected   map[int64]time.Time
 	disconnectCount map[int64]int
 	forcedMarked    map[*Client]bool
 	forcedCount     map[int64]int
 }
+
+const recentlyOnlineWindow = 10 * time.Minute
 
 func NewHub(st store.Store) *Hub {
 	return &Hub{
@@ -54,6 +57,7 @@ func NewHub(st store.Store) *Hub {
 		convClients:     make(map[int64]map[*Client]bool),
 		waiters:         make(map[int64][]chan struct{}),
 		lastSeen:        make(map[int64]time.Time),
+		lastConnected:   make(map[int64]time.Time),
 		disconnectCount: make(map[int64]int),
 		forcedMarked:    make(map[*Client]bool),
 		forcedCount:     make(map[int64]int),
@@ -70,6 +74,7 @@ func (h *Hub) Run() {
 			wasOnline := h.isOnlineLocked(client.entityID)
 			h.clients[client] = true
 			h.applySubscriptionsLocked(client, reg.convIDs)
+			h.lastConnected[client.entityID] = time.Now()
 			total := len(h.clients)
 			h.mu.Unlock()
 
@@ -116,6 +121,27 @@ func (h *Hub) LastSeen(entityID int64) (time.Time, bool) {
 	defer h.mu.RUnlock()
 	ts, ok := h.lastSeen[entityID]
 	return ts, ok
+}
+
+// LastConnected returns the last successful connection timestamp for an entity.
+func (h *Hub) LastConnected(entityID int64) (time.Time, bool) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	ts, ok := h.lastConnected[entityID]
+	return ts, ok
+}
+
+// PresenceState returns online, recently_online, or offline for an entity.
+func (h *Hub) PresenceState(entityID int64) string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	if h.isOnlineLocked(entityID) {
+		return "online"
+	}
+	if ts, ok := h.lastSeen[entityID]; ok && time.Since(ts) <= recentlyOnlineWindow {
+		return "recently_online"
+	}
+	return "offline"
 }
 
 // DisconnectCount returns the accumulated disconnect count for an entity.
@@ -709,7 +735,6 @@ func (h *Hub) BroadcastEventExcluding(convID int64, eventType string, payload in
 		}
 	}
 }
-
 
 func (h *Hub) handleSend(client *Client, rawData []byte) {
 	var envelope struct {

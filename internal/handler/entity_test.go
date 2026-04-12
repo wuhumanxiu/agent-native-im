@@ -250,6 +250,9 @@ func TestEntityStatus(t *testing.T) {
 	if statusData["online"] != false {
 		t.Fatalf("expected online=false, got %v", statusData["online"])
 	}
+	if statusData["presence_state"] != "offline" {
+		t.Fatalf("expected presence_state=offline, got %v", statusData["presence_state"])
+	}
 }
 
 func TestEntityStatusOwnership(t *testing.T) {
@@ -308,6 +311,9 @@ func TestEntitySelfCheckAndDiagnostics(t *testing.T) {
 	}
 	if _, ok := diag["disconnect_count"].(float64); !ok {
 		t.Fatalf("expected disconnect_count number in diagnostics, got %T", diag["disconnect_count"])
+	}
+	if diag["presence_state"] != "offline" {
+		t.Fatalf("expected diagnostics presence_state=offline, got %v", diag["presence_state"])
 	}
 }
 
