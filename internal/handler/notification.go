@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wzfukui/agent-native-im/internal/auth"
@@ -83,12 +84,22 @@ func notificationPushPath(notification *model.Notification) string {
 		return "/friends"
 	}
 	if publicID := notificationConversationPublicID(notification); publicID != "" {
-		return "/chat/public/" + url.PathEscape(publicID)
+		return "/chat/" + url.PathEscape(publicID)
 	}
 	if convID := notificationConversationID(notification); convID > 0 {
 		return "/chat/" + strconv.FormatInt(convID, 10)
 	}
 	return "/inbox?scope=" + url.QueryEscape(strconv.FormatInt(notification.RecipientEntityID, 10))
+}
+
+func notificationUnreadCount(notifications []*model.Notification) int {
+	count := 0
+	for _, notification := range notifications {
+		if notification != nil && notification.Status == model.NotificationUnread {
+			count++
+		}
+	}
+	return count
 }
 
 func (s *Server) pushNotification(ctx context.Context, notification *model.Notification) {
@@ -125,6 +136,17 @@ func (s *Server) pushNotification(ctx context.Context, notification *model.Notif
 	})
 }
 
+func (s *Server) queuePushNotification(notification *model.Notification) {
+	if notification == nil || s.Push == nil {
+		return
+	}
+	go func(notification *model.Notification) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		s.pushNotification(ctx, notification)
+	}(notification)
+}
+
 func (s *Server) createNotification(c *gin.Context, recipientID int64, actorID *int64, kind, title, body string, payload map[string]any) (*model.Notification, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -151,7 +173,7 @@ func (s *Server) createNotification(c *gin.Context, recipientID int64, actorID *
 		Type: "notification.new",
 		Data: notification,
 	})
-	s.pushNotification(c.Request.Context(), notification)
+	s.queuePushNotification(notification)
 	return notification, nil
 }
 
@@ -181,7 +203,7 @@ func (s *Server) createNotificationForRecipient(ctx context.Context, recipientID
 		Type: "notification.new",
 		Data: notification,
 	})
-	s.pushNotification(ctx, notification)
+	s.queuePushNotification(notification)
 	return notification, nil
 }
 
@@ -286,6 +308,13 @@ func (s *Server) HandleInboxSnapshot(c *gin.Context) {
 		"acting_entities":         actingEntities,
 		"pending_friend_requests": pendingRequests,
 		"notifications":           notifications,
+		"generated_at":            time.Now().UTC(),
+		"summary": gin.H{
+			"tracked_entity_count":         len(trackedEntityIDs),
+			"pending_friend_request_count": len(pendingRequests),
+			"notification_unread_count":    notificationUnreadCount(notifications),
+			"notification_total_count":     len(notifications),
+		},
 	})
 }
 

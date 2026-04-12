@@ -35,6 +35,91 @@ func TestCreateConversation(t *testing.T) {
 	}
 }
 
+func TestCreateDirectConversationReusesExistingConversation(t *testing.T) {
+	truncateAll(t)
+	adminToken := seedAdmin(t)
+	meResp := doJSON(t, "GET", "/api/v1/me", ptr(adminToken), nil)
+	assertStatus(t, meResp, http.StatusOK)
+	adminID := int64(parseOK(t, meResp)["id"].(float64))
+
+	userResp := doJSON(t, "POST", "/api/v1/admin/users", ptr(adminToken), map[string]string{
+		"username": "direct-peer",
+		"password": "Peerpass1",
+	})
+	assertStatus(t, userResp, http.StatusCreated)
+	peerID := int64(parseOK(t, userResp)["id"].(float64))
+	peerToken := login(t, "direct-peer", "Peerpass1")
+
+	reqResp := doJSON(t, "POST", "/api/v1/friends/requests", ptr(adminToken), map[string]any{
+		"target_entity_id": peerID,
+	})
+	assertStatus(t, reqResp, http.StatusCreated)
+	reqID := int(parseOK(t, reqResp)["id"].(float64))
+
+	acceptResp := doJSON(t, "POST", fmt.Sprintf("/api/v1/friends/requests/%d/accept", reqID), ptr(peerToken), nil)
+	assertStatus(t, acceptResp, http.StatusOK)
+
+	firstResp := doJSON(t, "POST", "/api/v1/conversations", ptr(adminToken), map[string]any{
+		"title":           "Admin -> Peer",
+		"conv_type":       "direct",
+		"participant_ids": []int64{peerID},
+	})
+	assertStatus(t, firstResp, http.StatusCreated)
+	first := parseOK(t, firstResp)
+
+	secondResp := doJSON(t, "POST", "/api/v1/conversations", ptr(peerToken), map[string]any{
+		"title":           "Peer -> Admin",
+		"conv_type":       "direct",
+		"participant_ids": []int64{adminID},
+	})
+	assertStatus(t, secondResp, http.StatusOK)
+	second := parseOK(t, secondResp)
+
+	if first["id"] != second["id"] {
+		t.Fatalf("expected direct conversation reuse, got %v and %v", first["id"], second["id"])
+	}
+}
+
+func TestCreateDirectConversationAsOwnedBot(t *testing.T) {
+	truncateAll(t)
+	adminToken := seedAdmin(t)
+
+	botResp := doJSON(t, "POST", "/api/v1/entities", ptr(adminToken), map[string]string{"name": "owned-agent"})
+	assertStatus(t, botResp, http.StatusCreated)
+	botEntity := parseOK(t, botResp)["entity"].(map[string]interface{})
+	botID := int64(botEntity["id"].(float64))
+
+	userResp := doJSON(t, "POST", "/api/v1/admin/users", ptr(adminToken), map[string]string{
+		"username": "acting-peer",
+		"password": "Peerpass1",
+	})
+	assertStatus(t, userResp, http.StatusCreated)
+	peerID := int64(parseOK(t, userResp)["id"].(float64))
+	peerToken := login(t, "acting-peer", "Peerpass1")
+
+	reqResp := doJSON(t, "POST", "/api/v1/friends/requests", ptr(adminToken), map[string]any{
+		"source_entity_id": botID,
+		"target_entity_id": peerID,
+	})
+	assertStatus(t, reqResp, http.StatusCreated)
+	reqID := int(parseOK(t, reqResp)["id"].(float64))
+
+	acceptResp := doJSON(t, "POST", fmt.Sprintf("/api/v1/friends/requests/%d/accept", reqID), ptr(peerToken), nil)
+	assertStatus(t, acceptResp, http.StatusOK)
+
+	convResp := doJSON(t, "POST", "/api/v1/conversations", ptr(adminToken), map[string]any{
+		"source_entity_id": botID,
+		"title":            "Bot -> Peer",
+		"conv_type":        "direct",
+		"participant_ids":  []int64{peerID},
+	})
+	assertStatus(t, convResp, http.StatusCreated)
+	conv := parseOK(t, convResp)
+	if conv["conv_type"] != "direct" {
+		t.Fatalf("expected direct conversation, got %v", conv["conv_type"])
+	}
+}
+
 func TestCreateGroupConversation(t *testing.T) {
 	truncateAll(t)
 	token := seedAdmin(t)
@@ -59,17 +144,46 @@ func TestListConversations(t *testing.T) {
 	truncateAll(t)
 	token := seedAdmin(t)
 
-	// Create two conversations
-	doJSON(t, "POST", "/api/v1/conversations", ptr(token), map[string]interface{}{"title": "Conv 1", "conv_type": "group"})
+	resp := doJSON(t, "POST", "/api/v1/conversations", ptr(token), map[string]interface{}{"title": "Conv 1", "conv_type": "group"})
+	assertStatus(t, resp, http.StatusCreated)
+	conv1 := parseOK(t, resp)
+	conv1ID := int(conv1["id"].(float64))
+
+	doJSON(t, "POST", "/api/v1/messages/send", ptr(token), map[string]interface{}{
+		"conversation_id": conv1ID,
+		"content_type":    "text",
+		"layers":          map[string]string{"summary": "Latest hello"},
+	})
+
 	doJSON(t, "POST", "/api/v1/conversations", ptr(token), map[string]interface{}{"title": "Conv 2", "conv_type": "group"})
 
-	resp := doJSON(t, "GET", "/api/v1/conversations", ptr(token), nil)
+	resp = doJSON(t, "GET", "/api/v1/conversations", ptr(token), nil)
 	assertStatus(t, resp, http.StatusOK)
 
 	result := parseResponse(t, resp)
 	convs, ok := result["data"].([]interface{})
 	if !ok || len(convs) < 2 {
 		t.Fatalf("expected at least 2 conversations, got %v", result["data"])
+	}
+
+	var found bool
+	for _, raw := range convs {
+		conv, _ := raw.(map[string]interface{})
+		if int(conv["id"].(float64)) != conv1ID {
+			continue
+		}
+		lastMsg, _ := conv["last_message"].(map[string]interface{})
+		if lastMsg == nil {
+			t.Fatalf("expected last_message for conversation %d", conv1ID)
+		}
+		layers, _ := lastMsg["layers"].(map[string]interface{})
+		if layers == nil || layers["summary"] != "Latest hello" {
+			t.Fatalf("expected last_message summary %q, got %v", "Latest hello", lastMsg["layers"])
+		}
+		found = true
+	}
+	if !found {
+		t.Fatalf("expected conversation %d in response", conv1ID)
 	}
 }
 
@@ -99,12 +213,29 @@ func TestGetConversationByPublicID(t *testing.T) {
 		t.Fatal("expected metadata.public_id")
 	}
 
-	resp = doJSON(t, "GET", fmt.Sprintf("/api/v1/conversations/public/%s", publicID), ptr(token), nil)
+	resp = doJSON(t, "GET", fmt.Sprintf("/api/v1/conversations/by-public-id/%s", publicID), ptr(token), nil)
 	assertStatus(t, resp, http.StatusOK)
 	got := parseOK(t, resp)
 	if got["id"] != data["id"] {
 		t.Fatalf("expected conversation id %v, got %v", data["id"], got["id"])
 	}
+}
+
+func TestGetConversationByPublicIDLegacyRoute(t *testing.T) {
+	truncateAll(t)
+	token := seedAdmin(t)
+
+	resp := doJSON(t, "POST", "/api/v1/conversations", ptr(token), map[string]interface{}{"title": "Legacy Public ID route", "conv_type": "group"})
+	assertStatus(t, resp, http.StatusCreated)
+	data := parseOK(t, resp)
+	meta, _ := data["metadata"].(map[string]interface{})
+	publicID, _ := meta["public_id"].(string)
+	if publicID == "" {
+		t.Fatal("expected metadata.public_id")
+	}
+
+	resp = doJSON(t, "GET", fmt.Sprintf("/api/v1/conversations/public/%s", publicID), ptr(token), nil)
+	assertStatus(t, resp, http.StatusOK)
 }
 
 func TestGetConversationByPublicIDForbiddenForNonParticipant(t *testing.T) {
@@ -124,7 +255,7 @@ func TestGetConversationByPublicIDForbiddenForNonParticipant(t *testing.T) {
 	assertStatus(t, resp, http.StatusCreated)
 	otherToken := login(t, "publicid-other-user", "Otherpass1")
 
-	resp = doJSON(t, "GET", fmt.Sprintf("/api/v1/conversations/public/%s", publicID), ptr(otherToken), nil)
+	resp = doJSON(t, "GET", fmt.Sprintf("/api/v1/conversations/by-public-id/%s", publicID), ptr(otherToken), nil)
 	assertStatus(t, resp, http.StatusForbidden)
 }
 

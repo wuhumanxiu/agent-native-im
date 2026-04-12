@@ -74,6 +74,7 @@ func TestSendMessageWithAttachments(t *testing.T) {
 	truncateAll(t)
 	token := seedAdmin(t)
 	convID := setupConversation(t, token)
+	storedName := uploadFileGetStoredName(t, token, "test-doc.pdf", "test attachment", "")
 
 	resp := doJSON(t, "POST", "/api/v1/messages/send", ptr(token), map[string]interface{}{
 		"conversation_id": convID,
@@ -82,7 +83,7 @@ func TestSendMessageWithAttachments(t *testing.T) {
 		"attachments": []map[string]interface{}{
 			{
 				"type":      "file",
-				"url":       "/files/test-doc.pdf",
+				"url":       "/files/" + storedName,
 				"filename":  "test-doc.pdf",
 				"mime_type": "application/pdf",
 				"size":      12345,
@@ -96,6 +97,34 @@ func TestSendMessageWithAttachments(t *testing.T) {
 	if !ok || len(attachments) != 1 {
 		t.Fatalf("expected 1 attachment, got %v", data["attachments"])
 	}
+}
+
+func TestSendMessageBindsUnscopedUploadedAttachmentToConversation(t *testing.T) {
+	truncateAll(t)
+	adminToken := seedAdmin(t)
+	otherID, otherToken := createSecondUser(t, adminToken, "attach-peer", "Attach123")
+
+	convID := createConversationWithParticipant(t, adminToken, float64(otherID))
+	storedName := uploadFileGetStoredName(t, adminToken, "notes.md", "# review", "")
+
+	resp := doJSON(t, "POST", "/api/v1/messages/send", ptr(adminToken), map[string]interface{}{
+		"conversation_id": convID,
+		"content_type":    "file",
+		"layers":          map[string]string{"summary": "review summary"},
+		"attachments": []map[string]interface{}{
+			{
+				"type":      "file",
+				"url":       "/files/" + storedName,
+				"filename":  "notes.md",
+				"mime_type": "text/markdown",
+				"size":      8,
+			},
+		},
+	})
+	assertStatus(t, resp, http.StatusCreated)
+
+	downloadResp := downloadFile(t, &otherToken, storedName)
+	assertStatus(t, downloadResp, http.StatusOK)
 }
 
 func TestSendMessageWithMentions(t *testing.T) {
@@ -427,6 +456,30 @@ func TestSendMessageWithReplyTo(t *testing.T) {
 	replyData := parseOK(t, resp)
 	if int(replyData["reply_to"].(float64)) != originalID {
 		t.Fatalf("expected reply_to=%d, got %v", originalID, replyData["reply_to"])
+	}
+}
+
+func TestGetMessage(t *testing.T) {
+	truncateAll(t)
+	token := seedAdmin(t)
+	convID := setupConversation(t, token)
+
+	resp := doJSON(t, "POST", "/api/v1/messages/send", ptr(token), map[string]interface{}{
+		"conversation_id": convID,
+		"layers":          map[string]string{"summary": "Fetch me"},
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	created := parseOK(t, resp)
+	msgID := int(created["id"].(float64))
+
+	resp = doJSON(t, "GET", fmt.Sprintf("/api/v1/messages/%d", msgID), ptr(token), nil)
+	assertStatus(t, resp, http.StatusOK)
+	data := parseOK(t, resp)
+	if int(data["id"].(float64)) != msgID {
+		t.Fatalf("expected message id %d, got %v", msgID, data["id"])
+	}
+	if data["conversation_id"].(float64) != float64(convID) {
+		t.Fatalf("expected conversation_id=%d, got %v", convID, data["conversation_id"])
 	}
 }
 

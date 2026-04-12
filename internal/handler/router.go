@@ -139,7 +139,8 @@ func NewRouter(s *Server) *gin.Engine {
 				full.POST("/conversations", s.HandleCreateConversation)
 				full.GET("/conversations", s.HandleListConversations)
 				full.GET("/conversations/:id", s.HandleGetConversation)
-				full.GET("/conversations/public/:publicId", s.HandleGetConversationByPublicID)
+				full.GET("/conversations/by-public-id/:publicId", s.HandleGetConversationByPublicID)
+				full.GET("/conversations/public/:publicId", s.HandleGetConversationByPublicIDCompat)
 				full.PUT("/conversations/:id", s.HandleUpdateConversation)
 
 				// Participants & lifecycle
@@ -161,6 +162,7 @@ func NewRouter(s *Server) *gin.Engine {
 
 				// Messages (with rate limiting)
 				full.POST("/messages/send", rateLimiters["message"].Middleware(), s.HandleSendMessage)
+				full.GET("/messages/:id", s.HandleGetMessage)
 				full.DELETE("/messages/:id", s.HandleRevokeMessage)
 				full.PUT("/messages/:id", s.HandleEditMessage)
 				full.POST("/messages/:id/respond", s.HandleInteractionResponse)

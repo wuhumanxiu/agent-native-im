@@ -35,6 +35,7 @@ type Store interface {
 type FileRecordStore interface {
 	CreateFileRecord(ctx context.Context, record *model.FileRecord) error
 	GetFileRecordByStoredName(ctx context.Context, storedName string) (*model.FileRecord, error)
+	BindFileRecordToConversation(ctx context.Context, storedName string, uploaderID, conversationID int64) error
 	ListExpiredFileRecords(ctx context.Context, olderThan time.Time, limit int) ([]*model.FileRecord, error)
 	DeleteFileRecord(ctx context.Context, id int64) error
 	ListAllStoredNames(ctx context.Context) ([]string, error)
@@ -51,6 +52,8 @@ type PushStore interface {
 	CreatePushSubscription(ctx context.Context, sub *model.PushSubscription) error
 	DeletePushSubscription(ctx context.Context, entityID int64, endpoint string) error
 	GetPushSubscriptionsByEntity(ctx context.Context, entityID int64) ([]*model.PushSubscription, error)
+	UpdatePushSubscriptionDeliveryStatus(ctx context.Context, id int64, lastError string, success bool) error
+	DeleteAllPushSubscriptions(ctx context.Context) error
 }
 
 type EntityStore interface {
@@ -113,6 +116,7 @@ type ConversationStore interface {
 	CreateConversation(ctx context.Context, conv *model.Conversation) error
 	GetConversation(ctx context.Context, id int64) (*model.Conversation, error)
 	GetConversationByPublicID(ctx context.Context, publicID string) (*model.Conversation, error)
+	FindDirectConversationByEntities(ctx context.Context, entityA, entityB int64) (*model.Conversation, error)
 	ListConversationsByEntity(ctx context.Context, entityID int64) ([]*model.Conversation, error)
 	ListArchivedConversationsByEntity(ctx context.Context, entityID int64) ([]*model.Conversation, error)
 	ListAllConversations(ctx context.Context, limit, offset int) ([]*model.Conversation, int, error)
@@ -141,6 +145,7 @@ type ParticipantStore interface {
 type MessageStore interface {
 	CreateMessage(ctx context.Context, msg *model.Message) error
 	GetMessageByID(ctx context.Context, id int64) (*model.Message, error)
+	GetLatestMessagesByConversationIDs(ctx context.Context, conversationIDs []int64) (map[int64]*model.Message, error)
 	ListMessages(ctx context.Context, conversationID int64, before int64, limit int) ([]*model.Message, error)
 	ListMessagesSince(ctx context.Context, conversationID int64, sinceID int64, limit int) ([]*model.Message, error)
 	SearchMessages(ctx context.Context, conversationID int64, query string, limit int) ([]*model.Message, error)

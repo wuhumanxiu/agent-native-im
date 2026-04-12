@@ -94,7 +94,18 @@ func (s *Server) canStartDirectConversation(c *gin.Context, initiator *model.Ent
 	if s.areFriends(c, initiator.ID, target.ID) {
 		return true
 	}
-	return (target.EntityType == model.EntityBot || target.EntityType == model.EntityService) && target.AllowNonFriendChat
+	return (target.EntityType == model.EntityBot || target.EntityType == model.EntityService) &&
+		target.DirectMessagePolicy == model.DirectMessagePolicyPlatformEntities
+}
+
+func canReceiveFriendRequest(target *model.Entity) bool {
+	if target == nil {
+		return false
+	}
+	if target.EntityType != model.EntityBot && target.EntityType != model.EntityService {
+		return true
+	}
+	return target.FriendRequestPolicy == model.FriendRequestPolicyPlatformEntities
 }
 
 // GET /entities/discover?q=...
@@ -192,6 +203,11 @@ func (s *Server) HandleCreateFriendRequest(c *gin.Context) {
 	}
 	if target.Status != "active" {
 		FailWithCode(c, http.StatusBadRequest, ErrCodeStateBadTransition, "target entity is not active")
+		return
+	}
+	normalizeInteractionPolicies(target)
+	if !canReceiveFriendRequest(target) {
+		FailWithCode(c, http.StatusForbidden, ErrCodePermDenied, "target entity does not accept friend requests")
 		return
 	}
 	if s.areFriends(c, source.ID, target.ID) {
@@ -480,9 +496,44 @@ func normalizeDiscoverability(entity *model.Entity) {
 	entity.Discoverability = "private"
 }
 
+func normalizeInteractionPolicies(entity *model.Entity) {
+	if entity == nil {
+		return
+	}
+	if strings.TrimSpace(entity.FriendRequestPolicy) == "" {
+		entity.FriendRequestPolicy = model.FriendRequestPolicyPlatformEntities
+	}
+	if strings.TrimSpace(entity.DirectMessagePolicy) == "" {
+		if entity.AllowNonFriendChat {
+			entity.DirectMessagePolicy = model.DirectMessagePolicyPlatformEntities
+		} else {
+			entity.DirectMessagePolicy = model.DirectMessagePolicyFriendsOnly
+		}
+	}
+	entity.AllowNonFriendChat = entity.DirectMessagePolicy == model.DirectMessagePolicyPlatformEntities
+}
+
 func validateDiscoverability(value string) bool {
 	switch value {
 	case "", "private", "platform_public", "external_public":
+		return true
+	default:
+		return false
+	}
+}
+
+func validateFriendRequestPolicy(value string) bool {
+	switch value {
+	case "", model.FriendRequestPolicyNobody, model.FriendRequestPolicyPlatformEntities:
+		return true
+	default:
+		return false
+	}
+}
+
+func validateDirectMessagePolicy(value string) bool {
+	switch value {
+	case "", model.DirectMessagePolicyFriendsOnly, model.DirectMessagePolicyPlatformEntities:
 		return true
 	default:
 		return false

@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
-
 	"log/slog"
+	"net/url"
 	"net/http"
 	"strconv"
 	"strings"
@@ -63,6 +63,47 @@ type sendMessageRequest struct {
 	ReplyTo        *int64              `json:"reply_to,omitempty"`
 }
 
+func attachmentStoredName(raw string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return ""
+	}
+	parsed, err := url.Parse(value)
+	if err == nil && parsed.Path != "" {
+		value = parsed.Path
+	}
+	if strings.HasPrefix(value, "/files/") {
+		return strings.TrimPrefix(value, "/files/")
+	}
+	return ""
+}
+
+func (s *Server) HandleGetMessage(c *gin.Context) {
+	msgID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		Fail(c, http.StatusBadRequest, "invalid message id")
+		return
+	}
+
+	entityID := auth.GetEntityID(c)
+	ctx := c.Request.Context()
+
+	msg, err := s.Store.GetMessageByID(ctx, msgID)
+	if err != nil {
+		FailWithCode(c, http.StatusNotFound, ErrCodeMessageNotFound, "message not found")
+		return
+	}
+
+	ok, err := s.Store.IsParticipant(ctx, msg.ConversationID, entityID)
+	if err != nil || !ok {
+		FailWithCode(c, http.StatusForbidden, ErrCodePermNotParticipant, "not a participant of this conversation")
+		return
+	}
+
+	s.populateSenders(ctx, []*model.Message{msg})
+	OK(c, http.StatusOK, msg)
+}
+
 func (s *Server) HandleSendMessage(c *gin.Context) {
 	var req sendMessageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -97,6 +138,33 @@ func (s *Server) HandleSendMessage(c *gin.Context) {
 	contentType := model.ContentType(req.ContentType)
 	if contentType == "" {
 		contentType = model.ContentText
+	}
+
+	for _, att := range req.Attachments {
+		storedName := attachmentStoredName(att.URL)
+		if storedName == "" {
+			continue
+		}
+		record, err := s.Store.GetFileRecordByStoredName(ctx, storedName)
+		if err != nil {
+			Fail(c, http.StatusBadRequest, "attachment file record not found")
+			return
+		}
+		if record.ConversationID != nil {
+			if *record.ConversationID != req.ConversationID {
+				Fail(c, http.StatusBadRequest, "attachment file belongs to a different conversation")
+				return
+			}
+			continue
+		}
+		if record.UploaderID != entityID {
+			Fail(c, http.StatusBadRequest, "attachment file is not owned by sender")
+			return
+		}
+		if err := s.Store.BindFileRecordToConversation(ctx, storedName, entityID, req.ConversationID); err != nil {
+			Fail(c, http.StatusInternalServerError, "failed to bind attachment to conversation")
+			return
+		}
 	}
 
 	msg := &model.Message{

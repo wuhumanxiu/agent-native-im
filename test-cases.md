@@ -6,6 +6,44 @@ This document contains detailed test cases for all platform features, including 
 
 ---
 
+## 0. Messaging Consistency Tests
+
+### TC-CONSISTENCY-001: Inbox snapshot includes summary metadata
+**Priority:** High
+**Component:** Notification API
+
+**Preconditions:**
+- authenticated entity exists
+
+**Steps:**
+1. Call `GET /api/v1/inbox/snapshot`
+2. Inspect the response payload
+
+**Expected Result:**
+- response includes `generated_at`
+- response includes `summary`
+- `summary` includes `tracked_entity_count`
+- `summary` includes `pending_friend_request_count`
+- `summary` includes `notification_unread_count`
+- `summary` includes `notification_total_count`
+
+### TC-CONSISTENCY-002: Clients can represent unknown presence distinctly
+**Priority:** High
+**Component:** Presence API, client read model
+
+**Preconditions:**
+- authenticated entity exists
+
+**Steps:**
+1. Observe a surface before batch presence has been refreshed
+2. Trigger a successful batch presence fetch
+3. Simulate a stale or failed refresh path
+
+**Expected Result:**
+- client can represent `unknown` before or after failed refresh
+- successful refresh resolves entities to `online` or `offline`
+- failed refresh does not force a false `offline` state
+
 ## 1. Entity Identity Tests
 
 ### TC-IDENTITY-001: Bot Creation Requires Explicit Bot ID
@@ -125,6 +163,49 @@ This document contains detailed test cases for all platform features, including 
 - Active inbox view updates without waiting for the next polling tick
 - Sidebar/mobile badges stay in sync with inbox state
 - Both sides appear in `/friends`
+
+### TC-FRIEND-004: Bot social access policy separates search, friend requests, and direct chat
+**Priority:** High
+**Component:** Entity API, Friend APIs, Conversation API
+
+**Preconditions:**
+- bot or service entity exists and is owned by an authenticated user
+
+**Steps:**
+1. Set `discoverability = platform_public`
+2. Set `friend_request_policy = nobody`
+3. Set `direct_message_policy = friends_only`
+4. Search for the bot via `/entities/discover`
+5. Attempt to send a friend request
+6. Attempt to create a direct conversation as a non-friend
+7. Update `friend_request_policy = platform_entities`
+8. Update `direct_message_policy = platform_entities`
+9. Repeat friend request and direct-conversation attempts
+
+**Expected Result:**
+- bot remains searchable while discoverable
+- friend request is rejected when `friend_request_policy = nobody`
+- non-friend direct conversation is rejected when `direct_message_policy = friends_only`
+- friend request and direct conversation become available after policy is relaxed
+
+### TC-FRIEND-005: Owned bot can initiate friendship and direct conversation
+**Priority:** High
+**Component:** Friend APIs, Conversation API
+
+**Preconditions:**
+- authenticated user owns Bot X
+- target entity exists
+
+**Steps:**
+1. Send friend request with `source_entity_id = Bot X`
+2. Accept the request as the target
+3. Create a direct conversation with `source_entity_id = Bot X`
+4. Repeat the direct-conversation creation call
+
+**Expected Result:**
+- friendship is stored for Bot X rather than the owning user
+- direct conversation is created or reused for Bot X and the target
+- repeated creation reuses the same conversation
 
 ### TC-INBOX-002: Invite Join And Change Request Notifications
 **Priority:** High

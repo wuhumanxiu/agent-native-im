@@ -736,11 +736,13 @@ curl http://localhost:9800/api/v1/skill-template?format=text
 Look up a conversation by its UUID-based public ID instead of the internal numeric ID.
 
 ```bash
-curl http://localhost:9800/api/v1/conversations/public/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+curl http://localhost:9800/api/v1/conversations/by-public-id/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
   -H "Authorization: Bearer <your_token>"
 ```
 
 Response: same as `GET /conversations/:id`.
+
+Legacy compatibility alias: `GET /api/v1/conversations/public/:publicId`.
 
 ## 23. Admin Endpoints (New in v3.5)
 
@@ -1002,7 +1004,8 @@ while True:
 | DELETE | `/api/v1/webhooks/:id` | Full | Delete webhook |
 | GET | `/api/v1/conversations` | Full | List conversations |
 | GET | `/api/v1/conversations/:id` | Full | Conversation detail |
-| GET | `/api/v1/conversations/public/:publicId` | Full | Conversation by public ID |
+| GET | `/api/v1/conversations/by-public-id/:publicId` | Full | Conversation by public ID |
+| GET | `/api/v1/conversations/public/:publicId` | Full | Legacy alias for conversation by public ID |
 | POST | `/api/v1/conversations` | Full | Create conversation |
 | PUT | `/api/v1/conversations/:id` | Full | Update title/description/prompt |
 | POST | `/api/v1/conversations/:id/leave` | Full | Leave conversation |

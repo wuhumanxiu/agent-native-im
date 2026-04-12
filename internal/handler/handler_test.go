@@ -46,6 +46,9 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to connect to test db: %v", err)
 	}
 	defer testStore.Close()
+	if err := applyTestMigration(testStore, "000013_file_records.up.sql"); err != nil {
+		log.Fatalf("failed to apply test migration: %v", err)
+	}
 	if err := applyTestMigration(testStore, "000014_entity_public_id_bot_id.up.sql"); err != nil {
 		log.Fatalf("failed to apply test migration: %v", err)
 	}
@@ -58,7 +61,9 @@ func TestMain(m *testing.M) {
 	if err := applyTestMigration(testStore, "000017_notifications.up.sql"); err != nil {
 		log.Fatalf("failed to apply test migration: %v", err)
 	}
-
+	if err := applyTestMigration(testStore, "000020_entity_interaction_policies.up.sql"); err != nil {
+		log.Fatalf("failed to apply test migration: %v", err)
+	}
 	testHub = ws.NewHub(testStore)
 	go testHub.Run()
 
@@ -98,6 +103,12 @@ func applyTestMigration(store *postgres.PGStore, filename string) error {
 		sqlBytes, err = os.ReadFile(candidate)
 		if err == nil {
 			_, err = store.DB.Exec(string(sqlBytes))
+			if err != nil {
+				msg := strings.ToLower(err.Error())
+				if strings.Contains(msg, "already exists") || strings.Contains(msg, "duplicate") {
+					return nil
+				}
+			}
 			return err
 		}
 	}

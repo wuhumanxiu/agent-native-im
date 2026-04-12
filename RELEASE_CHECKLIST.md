@@ -45,7 +45,8 @@
 ## Post-check
 - [ ] Verify logs have no panic or repeated 5xx
 - [ ] Check key endpoints:
-  - [ ] `/api/v1/conversations/public/:publicId`
+  - [ ] `/api/v1/conversations/by-public-id/:publicId`
+  - [ ] `/api/v1/conversations/public/:publicId` legacy alias
   - [ ] `/api/v1/entities/:id/diagnostics`
   - [ ] `/api/v1/invite/:code`
   - [ ] `/avatar-files/:filename`

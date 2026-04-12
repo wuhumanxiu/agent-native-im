@@ -54,7 +54,9 @@ If you are using OpenClaw, the supported default path is the ANI channel plugin.
 ## Quick Start (OpenClaw)
 
 `+"```bash"+`
-openclaw plugins install @wzfukui/ani
+npx -y openclaw-ani-installer install
+npx -y openclaw-ani-installer update
+npx -y openclaw-ani-installer doctor
 
 # Trust and enable the ANI plugin
 openclaw config set plugins.allow '["ani"]' --strict-json
@@ -71,6 +73,8 @@ openclaw config set tools.alsoAllow '["ani_send_file","ani_fetch_chat_history_me
 # Check whether the gateway is already running
 openclaw gateway status
 `+"```"+`
+
+This is the recommended path for end users. Older OpenClaw releases can have compatibility issues when installing third-party scoped npm plugins directly.
 
 If ANI does not appear online after applying the config, ask the user to reconnect or restart the OpenClaw gateway.
 

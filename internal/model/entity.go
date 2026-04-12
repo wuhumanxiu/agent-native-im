@@ -28,6 +28,8 @@ type Entity struct {
 	AvatarURL          string          `bun:"avatar_url,notnull" json:"avatar_url,omitempty"`
 	Status             string          `bun:"status,notnull,default:'active'" json:"status"`
 	Discoverability    string          `bun:"discoverability,notnull,default:'private'" json:"discoverability,omitempty"`
+	FriendRequestPolicy string         `bun:"friend_request_policy,notnull,default:'platform_entities'" json:"friend_request_policy,omitempty"`
+	DirectMessagePolicy string         `bun:"direct_message_policy,notnull,default:'friends_only'" json:"direct_message_policy,omitempty"`
 	AllowNonFriendChat bool            `bun:"allow_non_friend_chat,notnull,default:false" json:"allow_non_friend_chat"`
 	RequireAccessPassword bool         `bun:"require_access_password,notnull,default:false" json:"require_access_password"`
 	AccessPasswordHash  string         `bun:"access_password_hash,nullzero" json:"-"`
@@ -38,3 +40,11 @@ type Entity struct {
 
 	Owner *Entity `bun:"rel:belongs-to,join:owner_id=id" json:"owner,omitempty"`
 }
+
+const (
+	FriendRequestPolicyNobody           = "nobody"
+	FriendRequestPolicyPlatformEntities = "platform_entities"
+
+	DirectMessagePolicyFriendsOnly      = "friends_only"
+	DirectMessagePolicyPlatformEntities = "platform_entities"
+)

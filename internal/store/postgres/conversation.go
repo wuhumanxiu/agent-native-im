@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/wzfukui/agent-native-im/internal/model"
@@ -36,6 +37,30 @@ func (s *PGStore) GetConversationByPublicID(ctx context.Context, publicID string
 		return nil, err
 	}
 	return conv, nil
+}
+
+func (s *PGStore) FindDirectConversationByEntities(ctx context.Context, entityA, entityB int64) (*model.Conversation, error) {
+	var conv model.Conversation
+	err := s.DB.NewSelect().
+		Model(&conv).
+		Column("conversation.*").
+		Join("JOIN participants AS p ON p.conversation_id = conversation.id").
+		Where("conversation.conv_type = ?", model.ConvDirect).
+		Where("p.left_at IS NULL").
+		Group("conversation.id").
+		Having("COUNT(*) = 2").
+		Having("BOOL_OR(p.entity_id = ?)", entityA).
+		Having("BOOL_OR(p.entity_id = ?)", entityB).
+		OrderExpr("conversation.updated_at DESC").
+		Limit(1).
+		Scan(ctx)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return s.GetConversation(ctx, conv.ID)
 }
 
 func (s *PGStore) ListConversationsByEntity(ctx context.Context, entityID int64) ([]*model.Conversation, error) {

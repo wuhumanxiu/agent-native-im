@@ -28,4 +28,5 @@ type Conversation struct {
 	UpdatedAt   time.Time       `bun:"updated_at,nullzero,notnull,default:now()" json:"updated_at"`
 
 	Participants []*Participant `bun:"rel:has-many,join:id=conversation_id" json:"participants,omitempty"`
+	LastMessage  *Message       `bun:"-" json:"last_message,omitempty"`
 }

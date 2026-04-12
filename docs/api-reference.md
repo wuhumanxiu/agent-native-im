@@ -188,7 +188,9 @@ Update an owned entity's display name, avatar, metadata, or bot access policy.
     "display_name": "string (optional)",
     "avatar_url": "string (optional)",
     "discoverability": "private|platform_public|external_public (bots/services only)",
-    "allow_non_friend_chat": "boolean (bots/services only)",
+    "friend_request_policy": "nobody|platform_entities (bots/services only)",
+    "direct_message_policy": "friends_only|platform_entities (bots/services only)",
+    "allow_non_friend_chat": "boolean (legacy compatibility alias for direct_message_policy)",
     "require_access_password": "boolean (bots/services only, external_public only)",
     "access_password": "string (optional, set/rotate public password)",
     "metadata": {}
@@ -196,6 +198,11 @@ Update an owned entity's display name, avatar, metadata, or bot access policy.
   ```
 - **Response** `200`: Updated entity
 - **Errors**: `403 PERM_NOT_OWNER`, `404 ENTITY_NOT_FOUND`
+- **Notes**:
+  - `discoverability` controls platform search visibility and external-public mode
+  - `friend_request_policy` controls whether a bot/service accepts platform friend requests
+  - `direct_message_policy` controls whether non-friends may start a direct conversation
+  - `allow_non_friend_chat` remains supported for backward compatibility and maps to `direct_message_policy`
 
 ## Friends
 
@@ -235,6 +242,7 @@ Create a friend request. If there is already an opposite pending request, the re
 - **Notes**:
   - `source_entity_id` is optional for your own user entity
   - Users may set `source_entity_id` to an owned bot
+  - Bot/service targets may reject requests when `friend_request_policy = nobody`
 
 ### POST /friends/requests/:id/accept
 ### POST /friends/requests/:id/reject
@@ -280,6 +288,33 @@ Mark every notification for the acting entity as read.
 - **Auth**: Required
 - **Query**:
   - `entity_id` optional when acting as an owned bot
+
+### GET /inbox/snapshot
+
+Read the current inbox hydration snapshot for the acting entity or owned bot.
+
+- **Auth**: Required
+- **Query**:
+  - `entity_id` optional when acting as an owned bot
+- **Response** `200`:
+  ```json
+  {
+    "tracked_entity_ids": [1, 2, 3],
+    "acting_entities": [],
+    "pending_friend_requests": [],
+    "notifications": [],
+    "generated_at": "2026-04-04T02:30:00Z",
+    "summary": {
+      "tracked_entity_count": 3,
+      "pending_friend_request_count": 1,
+      "notification_unread_count": 4,
+      "notification_total_count": 7
+    }
+  }
+  ```
+- **Notes**:
+  - This endpoint is the preferred client read model for inbox/friend badge hydration
+  - Clients may combine it with conversation unread state, but should not rebuild friend/inbox badge counts independently when snapshot data is available
 
 ## Public Bot Access
 
@@ -418,14 +453,25 @@ Check online status for multiple entities at once.
 
 ### POST /conversations
 
-Create a new conversation.
+Create a new conversation or open/reuse a direct conversation.
 
 - **Auth**: Required
 - **Request body**:
   ```json
-  { "title": "string (optional)", "description": "string (optional)", "conv_type": "direct|group|channel (default: direct)", "participant_ids": [2, 3] }
+  {
+    "title": "string (optional)",
+    "description": "string (optional)",
+    "conv_type": "direct|group|channel (default: direct)",
+    "participant_ids": [2, 3],
+    "source_entity_id": 123
+  }
   ```
 - **Response** `201`: Conversation object with participants
+- **Notes**:
+  - `source_entity_id` is optional for your own user entity
+  - Users may set `source_entity_id` to an owned bot
+  - Direct conversations are reused when the same acting entity and target pair already have an existing direct conversation
+  - Non-friend direct conversations to bots/services require `direct_message_policy = platform_entities`
 
 ### GET /conversations
 
@@ -442,12 +488,22 @@ Get a specific conversation (must be participant).
 - **Auth**: Required (participant only)
 - **Response** `200`: Conversation object
 
-### GET /conversations/public/:publicId
+### GET /conversations/by-public-id/:publicId
 
 Get a conversation by its public UUID (must be participant).
 
 - **Auth**: Required (participant only)
 - **Response** `200`: Conversation object
+- **Notes**:
+  - This is a UUID lookup route, not a public share endpoint.
+  - Legacy alias: `GET /conversations/public/:publicId`
+
+### GET /messages/:id
+
+Get a specific message by numeric ID (must be a participant of the parent conversation).
+
+- **Auth**: Required (participant only)
+- **Response** `200`: Message object
 
 ### PUT /conversations/:id
 

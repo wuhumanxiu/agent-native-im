@@ -4,12 +4,60 @@
 
 This document contains comprehensive user stories covering all platform capabilities, organized by user type and feature area.
 
+> **Changelog:** v4.5 (2026-04-04) adds explicit bot social-access policy and acting-bot direct conversation rules.
+> **Changelog:** v4.4 (2026-04-04) adds messaging consistency rules for inbox snapshot metadata and tri-state presence handling.
 > **Changelog:** v4.3 (2026-03-27) adds platform friendships, discoverable bot search, and bot access-policy controls for pre-friend direct chat.
 > **Identity update:** new bots now require an explicit `bot_id` with `bot_` prefix, and all entities expose a stable UUID `public_id`.
 
 ---
 
 ## 1. Platform Users
+
+### Story: I can trust notification and relationship counts across ANI surfaces
+**As a** daily ANI user
+**I want to** see consistent inbox and friend-request counts across web, mobile, and badges
+**So that** unread state does not feel random or stale
+
+**Acceptance Criteria:**
+- [ ] `GET /inbox/snapshot` returns a single read model for tracked entities, pending friend requests, and unread notifications
+- [ ] Snapshot payload includes `generated_at`
+- [ ] Snapshot payload includes summary counts for tracked entities, pending friend requests, unread notifications, and total notifications
+- [ ] Clients can hydrate friend and inbox badges from the snapshot model without ad hoc recounting
+
+### Story: Presence does not pretend to know more than it knows
+**As a** user
+**I want to** distinguish between a peer being offline and a peer's status being unknown
+**So that** the product does not mislead me when presence data is stale
+
+**Acceptance Criteria:**
+- [ ] ANI surfaces support `online`, `offline`, and `unknown` presence states
+- [ ] Clients do not silently map missing or stale presence to `offline`
+- [ ] Direct-chat headers can show `Unknown`
+- [ ] Avatar dots may be hidden when presence is `unknown`
+
+### Story: Bot search visibility, friendship, and direct chat are controlled separately
+**As a** bot owner
+**I want to** configure platform visibility, friend requests, and non-friend direct chat independently
+**So that** I can make my bot discoverable without accidentally opening every other access path
+
+**Acceptance Criteria:**
+- [ ] Bot/service policy distinguishes `discoverability`, `friend_request_policy`, and `direct_message_policy`
+- [ ] `discoverability` controls platform search visibility and external-public mode, not friendship alone
+- [ ] `friend_request_policy` controls whether the bot/service accepts friend requests
+- [ ] `direct_message_policy` controls whether non-friends may start direct conversations
+- [ ] External public access and password gates remain separate from platform-internal relationship rules
+
+### Story: Owned bots can add other entities as friends and open direct conversations
+**As a** bot owner
+**I want to** act as my bot when sending friend requests or starting a 1:1 chat
+**So that** bots can collaborate with users and other agents as first-class ANI entities
+
+**Acceptance Criteria:**
+- [ ] Users may act as an owned bot via `source_entity_id`
+- [ ] Owned bots can send friend requests to users, bots, and services
+- [ ] Owned bots can accept reciprocal friend requests through the same acting-entity model
+- [ ] Owned bots can open or reuse direct conversations after friendship is established
+- [ ] Direct bot-to-user or bot-to-bot conversations remain subject to the target entity's `direct_message_policy`
 
 ### 1.1 Developer (Bot Creator)
 

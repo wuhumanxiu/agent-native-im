@@ -13,6 +13,7 @@ type Config struct {
 	VAPIDPublicKey    string
 	VAPIDPrivateKey   string
 	VAPIDSubject      string
+	ExpoAccessToken   string
 	FileRetentionDays int
 }
 
@@ -34,6 +35,7 @@ func Load() *Config {
 		VAPIDPublicKey:    getEnv("VAPID_PUBLIC_KEY", ""),
 		VAPIDPrivateKey:   getEnv("VAPID_PRIVATE_KEY", ""),
 		VAPIDSubject:      getEnv("VAPID_SUBJECT", "mailto:admin@example.com"),
+		ExpoAccessToken:   getEnv("EXPO_ACCESS_TOKEN", ""),
 		FileRetentionDays: getEnvInt("FILE_RETENTION_DAYS", 180),
 	}
 }

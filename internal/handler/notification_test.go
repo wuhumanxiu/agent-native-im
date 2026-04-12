@@ -21,7 +21,7 @@ func TestNotificationPushPathPrefersConversationPublicID(t *testing.T) {
 		"conversation_public_id": "2dca4d32-79bc-45b0-b6df-e5038bb6ad70",
 	})
 	notification := &model.Notification{RecipientEntityID: 7, Kind: "conversation.change_request", Data: payload}
-	if got := notificationPushPath(notification); got != "/chat/public/2dca4d32-79bc-45b0-b6df-e5038bb6ad70" {
+	if got := notificationPushPath(notification); got != "/chat/2dca4d32-79bc-45b0-b6df-e5038bb6ad70" {
 		t.Fatalf("expected public conversation path, got %q", got)
 	}
 }
@@ -36,5 +36,18 @@ func TestNotificationPushPathFallsBackToInboxScope(t *testing.T) {
 	notification := &model.Notification{RecipientEntityID: 19, Kind: "public.bot_session_created"}
 	if got := notificationPushPath(notification); got != "/inbox?scope=19" {
 		t.Fatalf("expected scoped inbox path, got %q", got)
+	}
+}
+
+func TestNotificationUnreadCount(t *testing.T) {
+	notifications := []*model.Notification{
+		{ID: 1, Status: model.NotificationUnread},
+		{ID: 2, Status: model.NotificationRead},
+		nil,
+		{ID: 3, Status: model.NotificationUnread},
+	}
+
+	if got := notificationUnreadCount(notifications); got != 2 {
+		t.Fatalf("expected unread count 2, got %d", got)
 	}
 }

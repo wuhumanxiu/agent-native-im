@@ -51,6 +51,7 @@ func (s *Server) broadcastSystemMessage(c *gin.Context, convID, senderID int64, 
 }
 
 type createConversationRequest struct {
+	SourceEntityID int64   `json:"source_entity_id"`
 	Title          string  `json:"title"`
 	Description    string  `json:"description"`
 	ConvType       string  `json:"conv_type"`
@@ -87,7 +88,6 @@ func (s *Server) HandleCreateConversation(c *gin.Context) {
 		return
 	}
 
-	entityID := auth.GetEntityID(c)
 	ctx := c.Request.Context()
 
 	convType := model.ConvDirect
@@ -97,12 +97,12 @@ func (s *Server) HandleCreateConversation(c *gin.Context) {
 		convType = model.ConvChannel
 	}
 
-	initiator, err := s.Store.GetEntityByID(ctx, entityID)
-	if err != nil || initiator == nil {
-		FailWithCode(c, http.StatusNotFound, ErrCodeEntityNotFound, "entity not found")
+	initiator, ok := s.resolveActingEntity(c, req.SourceEntityID)
+	if !ok {
 		return
 	}
 	normalizeDiscoverability(initiator)
+	normalizeInteractionPolicies(initiator)
 
 	if convType == model.ConvDirect {
 		if len(req.ParticipantIDs) > 1 {
@@ -116,12 +116,22 @@ func (s *Server) HandleCreateConversation(c *gin.Context) {
 				return
 			}
 			normalizeDiscoverability(target)
+			normalizeInteractionPolicies(target)
 			if target.Status != "active" {
 				FailWithCode(c, http.StatusBadRequest, ErrCodeStateBadTransition, "target entity is not active")
 				return
 			}
 			if !s.canStartDirectConversation(c, initiator, target) {
 				FailWithCode(c, http.StatusForbidden, ErrCodePermDenied, "direct conversation requires friendship or bot opt-in")
+				return
+			}
+			existing, err := s.Store.FindDirectConversationByEntities(ctx, initiator.ID, target.ID)
+			if err != nil {
+				Fail(c, http.StatusInternalServerError, "failed to look up direct conversation")
+				return
+			}
+			if existing != nil {
+				OK(c, http.StatusOK, existing)
 				return
 			}
 		}
@@ -144,7 +154,7 @@ func (s *Server) HandleCreateConversation(c *gin.Context) {
 	// Add creator as owner participant
 	if err := s.Store.AddParticipant(ctx, &model.Participant{
 		ConversationID: conv.ID,
-		EntityID:       entityID,
+		EntityID:       initiator.ID,
 		Role:           model.RoleOwner,
 	}); err != nil {
 		Fail(c, http.StatusInternalServerError, "failed to add creator as participant")
@@ -152,9 +162,9 @@ func (s *Server) HandleCreateConversation(c *gin.Context) {
 	}
 
 	// Add additional participants
-	participantEntityIDs := []int64{entityID}
+	participantEntityIDs := []int64{initiator.ID}
 	for _, pid := range req.ParticipantIDs {
-		if pid == entityID {
+		if pid == initiator.ID {
 			continue
 		}
 		if err := s.Store.AddParticipant(ctx, &model.Participant{
@@ -174,7 +184,7 @@ func (s *Server) HandleCreateConversation(c *gin.Context) {
 	}
 
 	// Reload conversation with participants
-	conv, err = s.Store.GetConversation(ctx, conv.ID)
+	conv, err := s.Store.GetConversation(ctx, conv.ID)
 	if err != nil {
 		Fail(c, http.StatusInternalServerError, "failed to reload conversation")
 		return
@@ -201,6 +211,13 @@ func (s *Server) HandleListConversations(c *gin.Context) {
 
 	// Enrich with unread counts
 	counts, _ := s.Store.GetUnreadCounts(ctx, entityID)
+	convIDs := make([]int64, 0, len(convs))
+	for _, conv := range convs {
+		if conv != nil {
+			convIDs = append(convIDs, conv.ID)
+		}
+	}
+	latestMessages, _ := s.Store.GetLatestMessagesByConversationIDs(ctx, convIDs)
 
 	type convWithUnread struct {
 		*model.Conversation
@@ -208,6 +225,9 @@ func (s *Server) HandleListConversations(c *gin.Context) {
 	}
 	result := make([]convWithUnread, len(convs))
 	for i, conv := range convs {
+		if conv != nil {
+			conv.LastMessage = latestMessages[conv.ID]
+		}
 		result[i] = convWithUnread{Conversation: conv, UnreadCount: counts[conv.ID]}
 	}
 
@@ -305,6 +325,12 @@ func (s *Server) HandleGetConversationByPublicID(c *gin.Context) {
 	}
 
 	OK(c, http.StatusOK, conv)
+}
+
+// HandleGetConversationByPublicIDCompat preserves the legacy route shape while
+// the API migrates away from the misleading "/public/" path segment.
+func (s *Server) HandleGetConversationByPublicIDCompat(c *gin.Context) {
+	s.HandleGetConversationByPublicID(c)
 }
 
 // HandleAddParticipant adds an entity to a conversation.

@@ -21,6 +21,63 @@ func (s *PGStore) GetMessageByID(ctx context.Context, id int64) (*model.Message,
 	return msg, nil
 }
 
+func (s *PGStore) GetLatestMessagesByConversationIDs(ctx context.Context, conversationIDs []int64) (map[int64]*model.Message, error) {
+	result := make(map[int64]*model.Message)
+	if len(conversationIDs) == 0 {
+		return result, nil
+	}
+
+	var msgs []*model.Message
+	err := s.DB.NewSelect().
+		Model(&msgs).
+		DistinctOn("conversation_id").
+		Where("conversation_id IN (?)", bun.In(conversationIDs)).
+		Where("revoked_at IS NULL").
+		OrderExpr("conversation_id, id DESC").
+		Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	senderIDs := make([]int64, 0, len(msgs))
+	seenSenders := make(map[int64]struct{}, len(msgs))
+	for _, msg := range msgs {
+		if msg == nil {
+			continue
+		}
+		result[msg.ConversationID] = msg
+		if _, ok := seenSenders[msg.SenderID]; !ok {
+			seenSenders[msg.SenderID] = struct{}{}
+			senderIDs = append(senderIDs, msg.SenderID)
+		}
+	}
+
+	if len(senderIDs) == 0 {
+		return result, nil
+	}
+
+	entities, err := s.GetEntitiesByIDs(ctx, senderIDs)
+	if err != nil {
+		return result, nil
+	}
+
+	entityByID := make(map[int64]*model.Entity, len(entities))
+	for _, entity := range entities {
+		if entity != nil {
+			entityByID[entity.ID] = entity
+		}
+	}
+
+	for _, msg := range result {
+		if sender := entityByID[msg.SenderID]; sender != nil {
+			msg.Sender = sender
+			msg.SenderType = string(sender.EntityType)
+		}
+	}
+
+	return result, nil
+}
+
 func (s *PGStore) ListMessages(ctx context.Context, conversationID int64, before int64, limit int) ([]*model.Message, error) {
 	var msgs []*model.Message
 	q := s.DB.NewSelect().Model(&msgs).

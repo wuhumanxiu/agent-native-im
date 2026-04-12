@@ -196,7 +196,9 @@ func (s *Server) HandleCreateEntity(c *gin.Context) {
 ## Quick Start (OpenClaw Plugin)
 
 `+"```bash"+`
-openclaw plugins install @wzfukui/ani
+npx -y openclaw-ani-installer install
+npx -y openclaw-ani-installer update
+npx -y openclaw-ani-installer doctor
 
 # Trust and enable the ANI plugin
 openclaw config set plugins.allow '["ani"]' --strict-json
@@ -214,6 +216,8 @@ openclaw config set tools.alsoAllow '["ani_send_file","ani_fetch_chat_history_me
 openclaw gateway status
 `+"```"+`
 
+This is the recommended path for end users. Older OpenClaw releases can have compatibility issues when installing third-party scoped npm plugins directly.
+
 If ANI does not appear online after applying the config, ask the user to reconnect or restart the OpenClaw gateway.
 
 ## Identity Setup
@@ -224,14 +228,10 @@ If ANI does not appear online after applying the config, ask the user to reconne
 %s- If your local `+"`IDENTITY.md`"+` is still the default blank template, write this identity into it now.
 - Do not ask the user what your name is if ANI already provides it.
 
-### Source Install (fallback)
+### More Information
 
-`+"```bash"+`
-git clone https://github.com/wzfukui/openclaw.git
-cd openclaw
-git checkout main
-pnpm install
-`+"```"+`
+- Installer package: https://www.npmjs.com/package/openclaw-ani-installer
+- Plugin package: https://www.npmjs.com/package/@wzfukui/ani
 `,
 		entity.DisplayName,
 		serverURL, wsURL, returnedKey,
@@ -661,6 +661,8 @@ func (s *Server) HandleUpdateEntity(c *gin.Context) {
 		DisplayName        *string                `json:"display_name"`
 		AvatarURL          *string                `json:"avatar_url"`
 		Discoverability    *string                `json:"discoverability"`
+		FriendRequestPolicy *string               `json:"friend_request_policy"`
+		DirectMessagePolicy *string               `json:"direct_message_policy"`
 		AllowNonFriendChat *bool                  `json:"allow_non_friend_chat"`
 		RequireAccessPassword *bool               `json:"require_access_password"`
 		AccessPassword     *string                `json:"access_password"`
@@ -726,7 +728,43 @@ func (s *Server) HandleUpdateEntity(c *gin.Context) {
 			FailWithCode(c, http.StatusBadRequest, ErrCodeValidationField, "allow_non_friend_chat is only supported for bots and services")
 			return
 		}
+		if *req.AllowNonFriendChat {
+			target.DirectMessagePolicy = model.DirectMessagePolicyPlatformEntities
+		} else {
+			target.DirectMessagePolicy = model.DirectMessagePolicyFriendsOnly
+		}
 		target.AllowNonFriendChat = *req.AllowNonFriendChat
+	}
+	if req.FriendRequestPolicy != nil {
+		if target.EntityType != model.EntityBot && target.EntityType != model.EntityService {
+			FailWithCode(c, http.StatusBadRequest, ErrCodeValidationField, "friend_request_policy is only supported for bots and services")
+			return
+		}
+		value := strings.TrimSpace(*req.FriendRequestPolicy)
+		if !validateFriendRequestPolicy(value) {
+			FailWithCode(c, http.StatusBadRequest, ErrCodeValidationField, "invalid friend_request_policy")
+			return
+		}
+		if value == "" {
+			value = model.FriendRequestPolicyPlatformEntities
+		}
+		target.FriendRequestPolicy = value
+	}
+	if req.DirectMessagePolicy != nil {
+		if target.EntityType != model.EntityBot && target.EntityType != model.EntityService {
+			FailWithCode(c, http.StatusBadRequest, ErrCodeValidationField, "direct_message_policy is only supported for bots and services")
+			return
+		}
+		value := strings.TrimSpace(*req.DirectMessagePolicy)
+		if !validateDirectMessagePolicy(value) {
+			FailWithCode(c, http.StatusBadRequest, ErrCodeValidationField, "invalid direct_message_policy")
+			return
+		}
+		if value == "" {
+			value = model.DirectMessagePolicyFriendsOnly
+		}
+		target.DirectMessagePolicy = value
+		target.AllowNonFriendChat = value == model.DirectMessagePolicyPlatformEntities
 	}
 	if req.RequireAccessPassword != nil {
 		if target.EntityType != model.EntityBot && target.EntityType != model.EntityService {
@@ -789,6 +827,7 @@ func (s *Server) HandleUpdateEntity(c *gin.Context) {
 		target.Metadata = merged
 	}
 	normalizeDiscoverability(target)
+	normalizeInteractionPolicies(target)
 
 	if err := s.Store.UpdateEntity(ctx, target); err != nil {
 		Fail(c, http.StatusInternalServerError, "failed to update entity")

@@ -56,7 +56,7 @@ func main() {
 			path := "/chat/" + fmt.Sprint(msg.ConversationID)
 			if conv, err := st.GetConversation(context.Background(), msg.ConversationID); err == nil {
 				if publicID := conversationPublicID(conv); publicID != "" {
-					path = "/chat/public/" + publicID
+					path = "/chat/" + publicID
 				}
 			}
 			pushSender.SendToEntity(context.Background(), entityID, push.Payload{

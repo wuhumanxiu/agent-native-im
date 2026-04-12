@@ -139,7 +139,7 @@ func TestDirectConversationRequiresFriendshipUnlessBotOptIn(t *testing.T) {
 
 	resp = doJSON(t, "PUT", fmt.Sprintf("/api/v1/entities/%d", botID), ptr(adminToken), map[string]interface{}{
 		"discoverability":       "platform_public",
-		"allow_non_friend_chat": true,
+		"direct_message_policy": "platform_entities",
 	})
 	assertStatus(t, resp, http.StatusOK)
 
@@ -149,6 +149,34 @@ func TestDirectConversationRequiresFriendshipUnlessBotOptIn(t *testing.T) {
 		"participant_ids": []int{botID},
 	})
 	assertStatus(t, resp, http.StatusCreated)
+}
+
+func TestFriendRequestBlockedWhenBotPolicyDisallowsRequests(t *testing.T) {
+	truncateAll(t)
+	adminToken := seedAdmin(t)
+
+	resp := doJSON(t, "POST", "/api/v1/admin/users", ptr(adminToken), map[string]string{
+		"username": "friend-policy-user",
+		"password": "Friendpass1",
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	userToken := login(t, "friend-policy-user", "Friendpass1")
+
+	resp = doJSON(t, "POST", "/api/v1/entities", ptr(adminToken), map[string]string{"name": "closed-helper"})
+	assertStatus(t, resp, http.StatusCreated)
+	botData := parseOK(t, resp)["entity"].(map[string]interface{})
+	botID := int(botData["id"].(float64))
+
+	resp = doJSON(t, "PUT", fmt.Sprintf("/api/v1/entities/%d", botID), ptr(adminToken), map[string]interface{}{
+		"discoverability":       "platform_public",
+		"friend_request_policy": "nobody",
+	})
+	assertStatus(t, resp, http.StatusOK)
+
+	resp = doJSON(t, "POST", "/api/v1/friends/requests", ptr(userToken), map[string]interface{}{
+		"target_entity_id": botID,
+	})
+	assertStatus(t, resp, http.StatusForbidden)
 }
 
 func TestDiscoverableEntitySearchRequiresExactMatch(t *testing.T) {

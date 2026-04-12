@@ -11,6 +11,22 @@ import (
 )
 
 func (s *PGStore) CreateEntity(ctx context.Context, entity *model.Entity) error {
+	if entity != nil {
+		if strings.TrimSpace(entity.Discoverability) == "" {
+			entity.Discoverability = "private"
+		}
+		if strings.TrimSpace(entity.FriendRequestPolicy) == "" {
+			entity.FriendRequestPolicy = model.FriendRequestPolicyPlatformEntities
+		}
+		if strings.TrimSpace(entity.DirectMessagePolicy) == "" {
+			if entity.AllowNonFriendChat {
+				entity.DirectMessagePolicy = model.DirectMessagePolicyPlatformEntities
+			} else {
+				entity.DirectMessagePolicy = model.DirectMessagePolicyFriendsOnly
+			}
+		}
+		entity.AllowNonFriendChat = entity.DirectMessagePolicy == model.DirectMessagePolicyPlatformEntities
+	}
 	_, err := s.DB.NewInsert().Model(entity).Exec(ctx)
 	return err
 }

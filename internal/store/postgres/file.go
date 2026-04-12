@@ -45,6 +45,17 @@ func (s *PGStore) GetFileRecordByStoredName(ctx context.Context, storedName stri
 	return record, nil
 }
 
+func (s *PGStore) BindFileRecordToConversation(ctx context.Context, storedName string, uploaderID, conversationID int64) error {
+	_, err := s.DB.NewUpdate().
+		Model((*model.FileRecord)(nil)).
+		Set("conversation_id = ?", conversationID).
+		Where("stored_name = ?", storedName).
+		Where("uploader_id = ?", uploaderID).
+		Where("conversation_id IS NULL").
+		Exec(ctx)
+	return err
+}
+
 func (s *PGStore) ListExpiredFileRecords(ctx context.Context, olderThan time.Time, limit int) ([]*model.FileRecord, error) {
 	var records []*model.FileRecord
 	err := s.DB.NewSelect().Model(&records).
