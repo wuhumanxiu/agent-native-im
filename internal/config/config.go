@@ -9,6 +9,10 @@ type Config struct {
 	JWTTTLHours       int
 	AdminUser         string
 	ServerURL         string
+	OnePassSiteID     string
+	OnePassAK         string
+	OnePassSK         string
+	OnePassBaseURL    string
 	AutoApproveAgents bool
 	VAPIDPublicKey    string
 	VAPIDPrivateKey   string
@@ -31,6 +35,10 @@ func Load() *Config {
 		JWTTTLHours:       getEnvInt("JWT_TTL_HOURS", 24),
 		AdminUser:         getEnv("ADMIN_USER", ""),
 		ServerURL:         getEnv("SERVER_URL", "http://localhost:9800"),
+		OnePassSiteID:     getEnv("ONEPASS_SITE_ID", ""),
+		OnePassAK:         getEnv("ONEPASS_AK", ""),
+		OnePassSK:         getEnv("ONEPASS_SK", ""),
+		OnePassBaseURL:    getEnv("ONEPASS_BASE_URL", "https://1pass.top"),
 		AutoApproveAgents: getEnv("AUTO_APPROVE_AGENTS", "") == "true",
 		VAPIDPublicKey:    getEnv("VAPID_PUBLIC_KEY", ""),
 		VAPIDPrivateKey:   getEnv("VAPID_PRIVATE_KEY", ""),

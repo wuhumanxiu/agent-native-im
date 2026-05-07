@@ -1,8 +1,14 @@
 package handler_test
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -34,6 +40,82 @@ func TestLoginBadCredentials(t *testing.T) {
 		"password": "wrongpass",
 	})
 	assertStatus(t, resp, http.StatusUnauthorized)
+}
+
+func TestOnePassLoginCreatesAndReusesUser(t *testing.T) {
+	truncateAll(t)
+
+	const (
+		siteID = "site_test"
+		ak     = "ak_test"
+		sk     = "sk_test"
+		openID = "openid-test-user"
+	)
+
+	onePass := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/token" || r.Method != http.MethodPost {
+			t.Fatalf("unexpected 1pass request: %s %s", r.Method, r.URL.Path)
+		}
+		if got := r.Header.Get("X-1Pass-AK"); got != ak {
+			t.Fatalf("unexpected AK: %q", got)
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read 1pass body: %v", err)
+		}
+		var payload map[string]string
+		if err := json.Unmarshal(body, &payload); err != nil {
+			t.Fatalf("parse 1pass body: %v", err)
+		}
+		if payload["ticket"] == "" || payload["format"] != "json" {
+			t.Fatalf("unexpected 1pass body: %s", body)
+		}
+
+		ts := r.Header.Get("X-1Pass-Ts")
+		nonce := r.Header.Get("X-1Pass-Nonce")
+		bodyHash := sha256.Sum256(body)
+		canonical := fmt.Sprintf("%s\n%s\nPOST\n/token\n%x", ts, nonce, bodyHash)
+		mac := hmac.New(sha256.New, []byte(sk))
+		mac.Write([]byte(canonical))
+		expectedSign := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+		if got := r.Header.Get("X-1Pass-Sign"); got != expectedSign {
+			t.Fatalf("unexpected signature: got %q want %q", got, expectedSign)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"site_id":"` + siteID + `","openid":"` + openID + `","unionid":null,"nickname":"Chris WeChat","headimgurl":"https://example.com/avatar.jpg","issued_at":"2026-05-07T12:00:00.000Z"}`))
+	}))
+	defer onePass.Close()
+
+	oldConfig := *testServer.Config
+	testServer.Config.OnePassSiteID = siteID
+	testServer.Config.OnePassAK = ak
+	testServer.Config.OnePassSK = sk
+	testServer.Config.OnePassBaseURL = onePass.URL
+	defer func() { *testServer.Config = oldConfig }()
+
+	resp := doJSON(t, "GET", "/api/v1/auth/1pass/config", nil, nil)
+	assertStatus(t, resp, http.StatusOK)
+	cfg := parseOK(t, resp)
+	if cfg["enabled"] != true || cfg["site_id"] != siteID || cfg["start_url"] != onePass.URL+"/start" {
+		t.Fatalf("unexpected 1pass config: %#v", cfg)
+	}
+
+	resp = doJSON(t, "POST", "/api/v1/auth/1pass/login", nil, map[string]string{"ticket": "TK_first"})
+	assertStatus(t, resp, http.StatusOK)
+	first := parseOK(t, resp)
+	firstEntity := first["entity"].(map[string]any)
+	if first["token"] == "" || firstEntity["display_name"] != "Chris WeChat" {
+		t.Fatalf("unexpected 1pass login payload: %#v", first)
+	}
+
+	resp = doJSON(t, "POST", "/api/v1/auth/1pass/login", nil, map[string]string{"ticket": "TK_second"})
+	assertStatus(t, resp, http.StatusOK)
+	second := parseOK(t, resp)
+	secondEntity := second["entity"].(map[string]any)
+	if firstEntity["id"] != secondEntity["id"] {
+		t.Fatalf("expected repeated 1pass login to reuse entity, first=%v second=%v", firstEntity["id"], secondEntity["id"])
+	}
 }
 
 func TestMeWithJWT(t *testing.T) {

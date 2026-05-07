@@ -57,6 +57,44 @@ Public user registration.
   ```
 - **Errors**: `400` (validation), `409 CONFLICT_DUPLICATE_USER`
 
+### GET /auth/1pass/config
+
+Return browser-safe 1pass login configuration. This endpoint never returns AK
+or SK.
+
+- **Auth**: None
+- **Response** `200` when configured:
+  ```json
+  { "enabled": true, "site_id": "site_xxx", "start_url": "https://1pass.top/start" }
+  ```
+- **Response** `200` when not configured:
+  ```json
+  { "enabled": false }
+  ```
+
+### POST /auth/1pass/login
+
+Exchange a 1pass browser callback ticket for a normal ANI web session. The
+frontend callback route is `/auth/callback/1pass`; it validates `state2` in the
+browser, then posts the one-time `ticket` to this endpoint.
+
+- **Auth**: None
+- **Rate limit**: Strict (login limiter)
+- **Request body**:
+  ```json
+  { "ticket": "one-time-ticket", "state2": "browser-state-value" }
+  ```
+- **Backend behavior**:
+  - signs `POST https://1pass.top/token` with `ONEPASS_AK` and `ONEPASS_SK`;
+  - verifies the returned `site_id` matches `ONEPASS_SITE_ID`;
+  - finds or creates a local user mapped from the returned WeChat `openid`;
+  - sets the normal `aim_token` HttpOnly cookie and returns a JWT.
+- **Response** `200`:
+  ```json
+  { "token": "jwt-string", "entity": { ... } }
+  ```
+- **Errors**: `400` (missing ticket), `401 AUTH_INVALID_CREDENTIALS`, `403 PERM_DENIED` (disabled local account), `503` (1pass not configured)
+
 ### POST /auth/refresh
 
 Refresh JWT token.

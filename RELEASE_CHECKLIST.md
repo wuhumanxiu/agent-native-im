@@ -3,6 +3,8 @@
 ## Pre-check
 - [ ] Confirm branch is `main` and working tree clean
 - [ ] Verify required env vars in target env (`JWT_SECRET`, `ADMIN_PASS`, `DATABASE_URL`)
+- [ ] If WeChat login is enabled, verify 1pass env vars in target env (`ONEPASS_SITE_ID`, `ONEPASS_AK`, `ONEPASS_SK`, `ONEPASS_BASE_URL`)
+- [ ] Confirm 1pass AK/SK are stored in a server-side secret location such as `/etc/systemd/system/agent-im.service.d/1pass.conf`, not in frontend code or docs
 - [ ] Confirm DB backup/snapshot exists
 
 ## Quality gate
@@ -32,6 +34,8 @@
 - [ ] Verify `/public/bots/:identifier` and `/public/bots/:identifier/session` work with password-protected external bots
 - [ ] Verify profile and entity avatar updates normalize to stored `/files/...` values
 - [ ] Verify repeated bot token rotation remains owner-only and revokes prior keys
+- [ ] If WeChat login is enabled, verify `GET /api/v1/auth/1pass/config` returns `enabled: true` and no AK/SK
+- [ ] If WeChat login is enabled, verify an invalid `POST /api/v1/auth/1pass/login` ticket fails with `401` after reaching 1pass
 
 ## Deploy
 - [ ] `go build -o agent-native-im ./cmd/server`
@@ -48,7 +52,9 @@
   - [ ] `/api/v1/conversations/by-public-id/:publicId`
   - [ ] `/api/v1/conversations/public/:publicId` legacy alias
   - [ ] `/api/v1/entities/:id/diagnostics`
+  - [ ] `/api/v1/auth/1pass/config` when WeChat login is enabled
   - [ ] `/api/v1/invite/:code`
   - [ ] `/avatar-files/:filename`
+- [ ] Confirm SPA route `/auth/callback/1pass` returns the web app HTML
 - [ ] Confirm browser WebSocket handshake returns `101 Switching Protocols` on `/api/v1/ws`
 - [ ] Rollback plan confirmed (last known good binary)

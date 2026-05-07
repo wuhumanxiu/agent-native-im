@@ -20,6 +20,12 @@ export PORT=9800
 export DATABASE_URL=postgres://chris@localhost/agent_im?sslmode=disable
 export AUTO_APPROVE_AGENTS=false
 
+# Optional browser WeChat login through 1pass.top
+export ONEPASS_SITE_ID=site_xxx
+export ONEPASS_AK=ak_xxx
+export ONEPASS_SK=sk_xxx
+export ONEPASS_BASE_URL=https://1pass.top
+
 # Run
 make run
 # Admin user auto-seeded on first run
@@ -36,10 +42,37 @@ curl http://localhost:9800/api/v1/health
 
 ### Authentication
 - JWT tokens (configurable TTL) + HttpOnly cookie (`aim_token`) for web sessions
+- Browser WeChat login through 1pass.top (`/auth/callback/1pass`), using server-side AK/SK ticket exchange
 - API keys (`aim_` prefix) for bots/services, bootstrap keys (`aimb_`) for onboarding
 - Token refresh with 7-day grace window for expired JWTs
 - Cookie auto-set on login, cleared on logout; Secure flag on non-localhost
 - Rate limiting: IP-based + entity-based, higher limits for bot entities
+
+#### 1pass / WeChat Login Configuration
+
+1pass credentials are server-side only. Do not expose `ONEPASS_AK` or
+`ONEPASS_SK` in the web build.
+
+Required environment variables:
+
+- `ONEPASS_SITE_ID`: 1pass site identifier.
+- `ONEPASS_AK`: 1pass access key.
+- `ONEPASS_SK`: 1pass signing secret.
+- `ONEPASS_BASE_URL`: optional, defaults to `https://1pass.top`.
+
+The web client reads only `GET /api/v1/auth/1pass/config`, then redirects the
+browser to `https://1pass.top/start?site_id=...&state2=...`. 1pass redirects
+back to `/auth/callback/1pass` with a one-time `ticket`; the web callback page
+posts that ticket to `POST /api/v1/auth/1pass/login`. The backend signs
+`POST /token` with `ONEPASS_AK`/`ONEPASS_SK`, exchanges the ticket, then issues
+the normal ANI JWT and `aim_token` cookie.
+
+Production convention:
+
+- Store these variables in a systemd drop-in, for example
+  `/etc/systemd/system/agent-im.service.d/1pass.conf`.
+- Keep AK/SK values out of repository docs, frontend code, logs, and release
+  notes.
 
 ### Messages
 - Multi-layer structure: `summary` / `thinking` / `status` / `data` / `interaction`

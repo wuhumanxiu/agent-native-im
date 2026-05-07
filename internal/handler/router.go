@@ -60,6 +60,8 @@ func NewRouter(s *Server) *gin.Engine {
 		// Auth endpoints with strict rate limiting
 		v1.POST("/auth/login", rateLimiters["login"].Middleware(), s.HandleLogin)
 		v1.POST("/auth/register", rateLimiters["register"].Middleware(), s.HandleRegister)
+		v1.GET("/auth/1pass/config", s.HandleOnePassConfig)
+		v1.POST("/auth/1pass/login", rateLimiters["login"].Middleware(), s.HandleOnePassLogin)
 
 		// Public push key endpoint (no auth needed)
 		v1.GET("/push/vapid-key", s.HandleGetVAPIDKey)
