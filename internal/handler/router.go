@@ -102,6 +102,7 @@ func NewRouter(s *Server) *gin.Engine {
 					admin.GET("/admin/conversations", s.HandleAdminListConversations)
 					admin.GET("/admin/audit-logs", s.HandleAdminListAuditLogs)
 					admin.POST("/admin/reset-password", s.HandleAdminResetPassword)
+					admin.PATCH("/admin/feedback/:id", s.HandleAdminUpdateFeedback)
 				}
 				// Entity management (user-only at handler level)
 				full.POST("/entities", s.HandleCreateEntity)
@@ -134,6 +135,10 @@ func NewRouter(s *Server) *gin.Engine {
 				full.GET("/notifications", s.HandleListNotifications)
 				full.POST("/notifications/:id/read", s.HandleMarkNotificationRead)
 				full.POST("/notifications/read-all", s.HandleMarkAllNotificationsRead)
+				full.POST("/feedback", s.HandleCreateFeedback)
+				full.GET("/feedback", s.HandleListFeedback)
+				full.GET("/feedback/:id", s.HandleGetFeedback)
+				full.POST("/feedback/:id/comments", s.HandleCreateFeedbackComment)
 
 				// Webhook management
 				full.POST("/webhooks", s.HandleCreateWebhook)

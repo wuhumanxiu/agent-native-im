@@ -1108,6 +1108,80 @@ Static file serving for uploaded files.
 
 ---
 
+## Feedback
+
+### POST /feedback
+
+Create a product feedback item.
+
+- **Auth**: Required user account
+- **Request body**:
+  ```json
+  {
+    "type": "bug|feature|question|account|other",
+    "severity": "low|normal|high|urgent",
+    "title": "Login keeps spinning",
+    "description": "Steps, expected result, actual result, impact...",
+    "contact": "optional contact",
+    "attachments": [
+      { "type": "image", "url": "/files/screenshot.png", "filename": "screenshot.png", "mime_type": "image/png", "size": 12345 }
+    ]
+  }
+  ```
+- **Response** `201`: Feedback item
+
+### GET /feedback
+
+List feedback items visible to the current user.
+
+- **Auth**: Required user account
+- **Scope**: Regular users see only their own submissions. The configured admin user sees all submissions.
+- **Query**: `status`, `type`, `q`, `limit`, `offset`
+- **Response** `200`:
+  ```json
+  { "items": [], "total": 0, "limit": 50, "offset": 0, "admin": false }
+  ```
+
+### GET /feedback/:id
+
+Get one feedback item and visible comments.
+
+- **Auth**: Required user account
+- **Scope**: Regular submitter or admin only
+- **Response** `200`:
+  ```json
+  { "item": { "id": 1, "status": "open" }, "comments": [], "admin": false }
+  ```
+
+### POST /feedback/:id/comments
+
+Add a follow-up comment.
+
+- **Auth**: Required user account
+- **Scope**: Regular submitter or admin only
+- **Request body**:
+  ```json
+  { "body": "Additional context", "visibility": "public|internal" }
+  ```
+- **Visibility**: Only admin users can create `internal` comments. Regular users always create public comments.
+- **Response** `201`:
+  ```json
+  { "comment": { "id": 1 }, "comments": [] }
+  ```
+
+### PATCH /admin/feedback/:id
+
+Update feedback triage fields.
+
+- **Auth**: Admin only
+- **Request body**:
+  ```json
+  { "status": "triaged", "priority": "high", "severity": "high", "type": "bug" }
+  ```
+- **Response** `200`: Updated feedback item
+
+---
+
 ## Push Notifications
 
 ### GET /push/vapid-key

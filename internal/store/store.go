@@ -23,6 +23,7 @@ type Store interface {
 	InviteStore
 	FriendStore
 	BotAccessStore
+	FeedbackStore
 	NotificationStore
 	TaskStore
 	MemoryStore
@@ -93,6 +94,15 @@ type BotAccessStore interface {
 	ListBotAccessLinks(ctx context.Context, botEntityID int64) ([]*model.BotAccessLink, error)
 	IncrementBotAccessLinkUseCount(ctx context.Context, id int64) error
 	DeleteBotAccessLink(ctx context.Context, id int64) error
+}
+
+type FeedbackStore interface {
+	CreateFeedbackItem(ctx context.Context, item *model.FeedbackItem) error
+	GetFeedbackItemByID(ctx context.Context, id int64) (*model.FeedbackItem, error)
+	ListFeedbackItems(ctx context.Context, filter model.FeedbackListFilter) ([]*model.FeedbackItem, int, error)
+	UpdateFeedbackItem(ctx context.Context, item *model.FeedbackItem) error
+	CreateFeedbackComment(ctx context.Context, comment *model.FeedbackComment) error
+	ListFeedbackComments(ctx context.Context, feedbackID int64, includeInternal bool) ([]*model.FeedbackComment, error)
 }
 
 type NotificationStore interface {
