@@ -87,7 +87,8 @@ browser, then posts the one-time `ticket` to this endpoint.
 - **Backend behavior**:
   - signs `POST https://1pass.top/token` with `ONEPASS_AK` and `ONEPASS_SK`;
   - verifies the returned `site_id` matches `ONEPASS_SITE_ID`;
-  - finds or creates a local user mapped from the returned WeChat `openid`;
+  - finds or creates the local ANI user through `auth_external_identities`;
+  - backfills legacy `1pass_<hash>` users on next login when needed;
   - sets the normal `aim_token` HttpOnly cookie and returns a JWT.
 - **Response** `200`:
   ```json
@@ -129,16 +130,63 @@ Update the authenticated entity's profile.
 - **Response** `200`: Updated entity object
 - **Errors**: `409 CONFLICT_DUPLICATE_USER` (email in use)
 
+### GET /me/auth-methods
+
+Return password-login status and bound external login identities for the current user.
+
+- **Auth**: Required (full user auth)
+- **Response** `200`:
+  ```json
+  {
+    "has_password": true,
+    "password_can_set": false,
+    "external_identities": [
+      {
+        "id": 1,
+        "entity_id": 123,
+        "provider": "1pass",
+        "upstream_provider": "wechat",
+        "display_name": "Chris",
+        "avatar_url": "https://example.com/avatar.jpg",
+        "linked_at": "2026-05-10T00:00:00Z",
+        "last_used_at": "2026-05-10T00:00:00Z"
+      }
+    ]
+  }
+  ```
+
+Raw external subjects such as 1Pass `openid` and `unionid` are intentionally not exposed.
+
+### POST /me/external-identities/1pass/link
+
+Bind a 1Pass callback ticket to the current ANI account.
+
+- **Auth**: Required (full user auth)
+- **Request body**:
+  ```json
+  { "ticket": "one-time-ticket", "state2": "browser-state-value" }
+  ```
+- **Response** `200`: Bound external identity object
+- **Errors**: `401 AUTH_INVALID_CREDENTIALS`, `409 CONFLICT` when the 1Pass identity is already linked to another ANI account
+
+### DELETE /me/external-identities/:id
+
+Unbind an external login identity from the current ANI account.
+
+- **Auth**: Required (full user auth)
+- **Response** `200`: `"external identity unlinked"`
+- **Errors**: `409 STATE_BAD_TRANSITION` when this would remove the last available login method
+
 ### PUT /me/password
 
-Change the authenticated user's password.
+Change the authenticated user's password, or set the first password for an external-login-only user.
 
 - **Auth**: Required (user only)
 - **Request body**:
   ```json
-  { "old_password": "string", "new_password": "string" }
+  { "old_password": "string (required when password exists)", "new_password": "string", "username": "string (optional on first password)", "email": "string (optional)" }
   ```
-- **Response** `200`: `"password changed"`
+- **Response** `200`: `"password changed"` or `{ "message": "password set", "entity": { ... } }`
 - **Errors**: `400` (validation), `401` (wrong old password)
 
 ### GET /me/devices

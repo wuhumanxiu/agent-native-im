@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -146,6 +147,14 @@ func (s *Server) HandleMe(c *gin.Context) {
 	OK(c, http.StatusOK, entity)
 }
 
+func (s *Server) hasPasswordCredential(ctx context.Context, entityID int64) (bool, error) {
+	creds, err := s.Store.GetCredentialsByEntity(ctx, entityID, model.CredPassword)
+	if err != nil {
+		return false, err
+	}
+	return len(creds) > 0, nil
+}
+
 // HandleRefreshToken issues a new JWT token for the authenticated entity.
 func (s *Server) HandleRefreshToken(c *gin.Context) {
 	entityID := auth.GetEntityID(c)
@@ -242,11 +251,13 @@ func (s *Server) HandleChangePassword(c *gin.Context) {
 	}
 
 	var req struct {
-		OldPassword string `json:"old_password" binding:"required"`
+		OldPassword string `json:"old_password"`
 		NewPassword string `json:"new_password" binding:"required"`
+		Username    string `json:"username"`
+		Email       string `json:"email"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, "old_password and new_password required")
+		Fail(c, http.StatusBadRequest, "new_password required")
 		return
 	}
 
@@ -259,10 +270,47 @@ func (s *Server) HandleChangePassword(c *gin.Context) {
 	entityID := auth.GetEntityID(c)
 	ctx := c.Request.Context()
 
-	// Verify old password
 	creds, err := s.Store.GetCredentialsByEntity(ctx, entityID, model.CredPassword)
-	if err != nil || len(creds) == 0 {
-		Fail(c, http.StatusInternalServerError, "no password credential found")
+	if err != nil {
+		Fail(c, http.StatusInternalServerError, "failed to load password credentials")
+		return
+	}
+
+	newHash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		Fail(c, http.StatusInternalServerError, "failed to hash password")
+		return
+	}
+
+	if len(creds) == 0 {
+		entity, err := s.Store.GetEntityByID(ctx, entityID)
+		if err != nil {
+			FailWithCode(c, http.StatusNotFound, ErrCodeEntityNotFound, "entity not found")
+			return
+		}
+		if strings.HasPrefix(entity.Name, "1pass_") && strings.TrimSpace(req.Username) == "" {
+			Fail(c, http.StatusBadRequest, "username required when setting the first password")
+			return
+		}
+		if err := s.updateAccountLoginFields(ctx, entity, req.Username, req.Email); err != nil {
+			if strings.Contains(err.Error(), "already") {
+				FailWithCode(c, http.StatusConflict, ErrCodeDuplicateUser, err.Error())
+			} else {
+				Fail(c, http.StatusBadRequest, err.Error())
+			}
+			return
+		}
+		cred := &model.Credential{
+			EntityID:   entityID,
+			CredType:   model.CredPassword,
+			SecretHash: string(newHash),
+		}
+		if err := s.Store.CreateCredential(ctx, cred); err != nil {
+			Fail(c, http.StatusInternalServerError, "failed to create password")
+			return
+		}
+		s.attachEntityIdentity(ctx, entity)
+		OK(c, http.StatusOK, gin.H{"message": "password set", "entity": entity})
 		return
 	}
 
@@ -278,13 +326,6 @@ func (s *Server) HandleChangePassword(c *gin.Context) {
 		return
 	}
 
-	// Hash new password and update
-	newHash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
-	if err != nil {
-		Fail(c, http.StatusInternalServerError, "failed to hash password")
-		return
-	}
-
 	matchedCred.SecretHash = string(newHash)
 	if err := s.Store.UpdateCredential(ctx, matchedCred); err != nil {
 		Fail(c, http.StatusInternalServerError, "failed to update password")
@@ -292,6 +333,43 @@ func (s *Server) HandleChangePassword(c *gin.Context) {
 	}
 
 	OK(c, http.StatusOK, "password changed")
+}
+
+func (s *Server) updateAccountLoginFields(ctx context.Context, entity *model.Entity, username, email string) error {
+	changed := false
+	username = strings.TrimSpace(username)
+	if username != "" && username != entity.Name {
+		if len(username) < 3 || len(username) > 64 {
+			return fmt.Errorf("username must be 3 to 64 characters")
+		}
+		if strings.Contains(username, "@") || strings.ContainsAny(username, " \t\r\n/\\") {
+			return fmt.Errorf("username contains unsupported characters")
+		}
+		existing, _ := s.Store.GetEntityByName(ctx, username, model.EntityUser)
+		if existing != nil && existing.ID != entity.ID {
+			return fmt.Errorf("username already exists")
+		}
+		entity.Name = username
+		if entity.DisplayName == "" || strings.HasPrefix(entity.DisplayName, "1pass_") {
+			entity.DisplayName = username
+		}
+		changed = true
+	}
+
+	email = strings.TrimSpace(email)
+	if email != "" && email != entity.Email {
+		existing, _ := s.Store.GetEntityByEmail(ctx, email)
+		if existing != nil && existing.ID != entity.ID {
+			return fmt.Errorf("email already registered")
+		}
+		entity.Email = email
+		changed = true
+	}
+
+	if !changed {
+		return nil
+	}
+	return s.Store.UpdateEntity(ctx, entity)
 }
 
 // HandleCreateUser creates a new user entity with a password credential. Admin only.

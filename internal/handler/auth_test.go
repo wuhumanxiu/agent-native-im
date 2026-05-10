@@ -108,6 +108,21 @@ func TestOnePassLoginCreatesAndReusesUser(t *testing.T) {
 	if first["token"] == "" || firstEntity["display_name"] != "Chris WeChat" {
 		t.Fatalf("unexpected 1pass login payload: %#v", first)
 	}
+	firstToken := first["token"].(string)
+
+	resp = doJSON(t, "GET", "/api/v1/me/auth-methods", ptr(firstToken), nil)
+	assertStatus(t, resp, http.StatusOK)
+	methods := parseOK(t, resp)
+	if methods["has_password"] != false || methods["password_can_set"] != true {
+		t.Fatalf("unexpected auth methods password state: %#v", methods)
+	}
+	identities, ok := methods["external_identities"].([]any)
+	if !ok || len(identities) != 1 {
+		t.Fatalf("expected one external identity, got %#v", methods["external_identities"])
+	}
+	identity := identities[0].(map[string]any)
+	resp = doJSON(t, "DELETE", fmt.Sprintf("/api/v1/me/external-identities/%.0f", identity["id"]), ptr(firstToken), nil)
+	assertStatus(t, resp, http.StatusConflict)
 
 	resp = doJSON(t, "POST", "/api/v1/auth/1pass/login", nil, map[string]string{"ticket": "TK_second"})
 	assertStatus(t, resp, http.StatusOK)
@@ -116,6 +131,72 @@ func TestOnePassLoginCreatesAndReusesUser(t *testing.T) {
 	if firstEntity["id"] != secondEntity["id"] {
 		t.Fatalf("expected repeated 1pass login to reuse entity, first=%v second=%v", firstEntity["id"], secondEntity["id"])
 	}
+}
+
+func TestOnePassUserCanSetFirstPasswordAndUsername(t *testing.T) {
+	truncateAll(t)
+
+	const (
+		siteID = "site_test_first_password"
+		ak     = "ak_test"
+		sk     = "sk_test"
+		openID = "openid-first-password"
+	)
+
+	onePass := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"site_id":"` + siteID + `","openid":"` + openID + `","unionid":"union-first-password","nickname":"Mobile User","headimgurl":"","issued_at":"2026-05-10T12:00:00.000Z"}`))
+	}))
+	defer onePass.Close()
+
+	oldConfig := *testServer.Config
+	testServer.Config.OnePassSiteID = siteID
+	testServer.Config.OnePassAK = ak
+	testServer.Config.OnePassSK = sk
+	testServer.Config.OnePassBaseURL = onePass.URL
+	defer func() { *testServer.Config = oldConfig }()
+
+	resp := doJSON(t, "POST", "/api/v1/auth/1pass/login", nil, map[string]string{"ticket": "TK_first"})
+	assertStatus(t, resp, http.StatusOK)
+	loginPayload := parseOK(t, resp)
+	token := loginPayload["token"].(string)
+	entity := loginPayload["entity"].(map[string]any)
+	if name, _ := entity["name"].(string); len(name) < 7 || name[:6] != "1pass_" {
+		t.Fatalf("expected legacy synthetic initial name, got %#v", entity["name"])
+	}
+
+	resp = doJSON(t, "PUT", "/api/v1/me/password", ptr(token), map[string]string{
+		"username":     "mobileuser",
+		"email":        "mobileuser@example.com",
+		"new_password": "Mobilepass123",
+	})
+	assertStatus(t, resp, http.StatusOK)
+
+	resp = doJSON(t, "POST", "/api/v1/auth/login", nil, map[string]string{
+		"username": "mobileuser",
+		"password": "Mobilepass123",
+	})
+	assertStatus(t, resp, http.StatusOK)
+
+	resp = doJSON(t, "POST", "/api/v1/auth/1pass/login", nil, map[string]string{"ticket": "TK_second"})
+	assertStatus(t, resp, http.StatusOK)
+	second := parseOK(t, resp)
+	secondEntity := second["entity"].(map[string]any)
+	if secondEntity["name"] != "mobileuser" {
+		t.Fatalf("expected 1pass login to reuse renamed entity, got %#v", secondEntity)
+	}
+
+	secondToken := second["token"].(string)
+	resp = doJSON(t, "GET", "/api/v1/me/auth-methods", ptr(secondToken), nil)
+	assertStatus(t, resp, http.StatusOK)
+	methods := parseOK(t, resp)
+	identities, ok := methods["external_identities"].([]any)
+	if !ok || len(identities) != 1 {
+		t.Fatalf("expected one external identity after password setup, got %#v", methods["external_identities"])
+	}
+	identity := identities[0].(map[string]any)
+	resp = doJSON(t, "DELETE", fmt.Sprintf("/api/v1/me/external-identities/%.0f", identity["id"]), ptr(secondToken), nil)
+	assertStatus(t, resp, http.StatusOK)
 }
 
 func TestMeWithJWT(t *testing.T) {

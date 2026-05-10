@@ -187,6 +187,19 @@ func onePassEntityName(siteID, openID string) string {
 	return "1pass_" + hex.EncodeToString(sum[:])[:32]
 }
 
+func onePassProviderSubject(siteID, openID string) string {
+	return "site:" + strings.TrimSpace(siteID) + ":openid:" + strings.TrimSpace(openID)
+}
+
+func onePassUpstreamSubject(profile *onePassUserInfo) string {
+	if profile.UnionID != nil {
+		if unionID := strings.TrimSpace(*profile.UnionID); unionID != "" {
+			return unionID
+		}
+	}
+	return strings.TrimSpace(profile.OpenID)
+}
+
 func onePassDisplayName(profile *onePassUserInfo) string {
 	if profile.Nickname != nil {
 		if nickname := strings.TrimSpace(*profile.Nickname); nickname != "" {
@@ -211,43 +224,133 @@ func onePassMetadata(profile *onePassUserInfo) []byte {
 	return mustJSONMetadata(meta)
 }
 
+func onePassRawProfile(profile *onePassUserInfo) []byte {
+	raw := map[string]any{
+		"site_id":   profile.SiteID,
+		"openid":    profile.OpenID,
+		"issued_at": profile.IssuedAt,
+	}
+	if profile.UnionID != nil && strings.TrimSpace(*profile.UnionID) != "" {
+		raw["unionid"] = strings.TrimSpace(*profile.UnionID)
+	}
+	if profile.Nickname != nil && strings.TrimSpace(*profile.Nickname) != "" {
+		raw["nickname"] = strings.TrimSpace(*profile.Nickname)
+	}
+	if profile.HeadimgURL != nil && strings.TrimSpace(*profile.HeadimgURL) != "" {
+		raw["headimgurl"] = strings.TrimSpace(*profile.HeadimgURL)
+	}
+	return mustJSONMetadata(raw)
+}
+
+func onePassAvatarURL(profile *onePassUserInfo) string {
+	if profile.HeadimgURL == nil {
+		return ""
+	}
+	return strings.TrimSpace(*profile.HeadimgURL)
+}
+
+func (s *Server) upsertOnePassExternalIdentity(ctx context.Context, entityID int64, profile *onePassUserInfo) (*model.ExternalIdentity, error) {
+	siteID := strings.TrimSpace(profile.SiteID)
+	if siteID == "" {
+		siteID = s.Config.OnePassSiteID
+	}
+	providerSubject := onePassProviderSubject(siteID, profile.OpenID)
+	identity, err := s.Store.GetExternalIdentityByProviderSubject(ctx, "1pass", providerSubject)
+	if err == nil && identity != nil {
+		if identity.EntityID != entityID {
+			return nil, fmt.Errorf("1pass identity already linked to another entity")
+		}
+		identity.UpstreamProvider = "wechat"
+		identity.UpstreamSubject = onePassUpstreamSubject(profile)
+		identity.SiteID = siteID
+		identity.DisplayName = onePassDisplayName(profile)
+		identity.AvatarURL = onePassAvatarURL(profile)
+		identity.RawProfile = onePassRawProfile(profile)
+		identity.LastUsedAt = time.Now()
+		return identity, s.Store.UpdateExternalIdentity(ctx, identity)
+	}
+
+	identity = &model.ExternalIdentity{
+		EntityID:         entityID,
+		Provider:         "1pass",
+		ProviderSubject:  providerSubject,
+		UpstreamProvider: "wechat",
+		UpstreamSubject:  onePassUpstreamSubject(profile),
+		SiteID:           siteID,
+		DisplayName:      onePassDisplayName(profile),
+		AvatarURL:        onePassAvatarURL(profile),
+		RawProfile:       onePassRawProfile(profile),
+		LinkedAt:         time.Now(),
+		LastUsedAt:       time.Now(),
+	}
+	if err := s.Store.CreateExternalIdentity(ctx, identity); err != nil {
+		// If another request linked concurrently, load and reuse the winning row.
+		if existing, getErr := s.Store.GetExternalIdentityByProviderSubject(ctx, "1pass", providerSubject); getErr == nil {
+			return existing, nil
+		}
+		return nil, err
+	}
+	return identity, nil
+}
+
+func (s *Server) updateEntityFromOnePass(ctx context.Context, entity *model.Entity, profile *onePassUserInfo) error {
+	changed := false
+	displayName := onePassDisplayName(profile)
+	if entity.DisplayName == "" || entity.DisplayName == "WeChat User" {
+		entity.DisplayName = displayName
+		changed = true
+	}
+	if avatar := onePassAvatarURL(profile); avatar != "" && entity.AvatarURL != avatar {
+		entity.AvatarURL = avatar
+		changed = true
+	}
+	if len(entity.Metadata) == 0 {
+		entity.Metadata = onePassMetadata(profile)
+		changed = true
+	}
+	if !changed {
+		return nil
+	}
+	return s.Store.UpdateEntity(ctx, entity)
+}
+
 func (s *Server) findOrCreateOnePassEntity(ctx context.Context, profile *onePassUserInfo) (*model.Entity, error) {
-	name := onePassEntityName(s.Config.OnePassSiteID, profile.OpenID)
-	if entity, err := s.Store.GetEntityByName(ctx, name, model.EntityUser); err == nil {
-		changed := false
-		displayName := onePassDisplayName(profile)
-		if entity.DisplayName == "" || entity.DisplayName == "WeChat User" {
-			entity.DisplayName = displayName
-			changed = true
+	siteID := strings.TrimSpace(profile.SiteID)
+	if siteID == "" {
+		siteID = s.Config.OnePassSiteID
+	}
+	providerSubject := onePassProviderSubject(siteID, profile.OpenID)
+	if identity, err := s.Store.GetExternalIdentityByProviderSubject(ctx, "1pass", providerSubject); err == nil && identity != nil {
+		entity, err := s.Store.GetEntityByID(ctx, identity.EntityID)
+		if err != nil {
+			return nil, err
 		}
-		if profile.HeadimgURL != nil {
-			if avatar := strings.TrimSpace(*profile.HeadimgURL); avatar != "" && entity.AvatarURL != avatar {
-				entity.AvatarURL = avatar
-				changed = true
-			}
+		if err := s.updateEntityFromOnePass(ctx, entity, profile); err != nil {
+			return nil, err
 		}
-		if len(entity.Metadata) == 0 {
-			entity.Metadata = onePassMetadata(profile)
-			changed = true
-		}
-		if changed {
-			if err := s.Store.UpdateEntity(ctx, entity); err != nil {
-				return nil, err
-			}
+		if _, err := s.upsertOnePassExternalIdentity(ctx, entity.ID, profile); err != nil {
+			return nil, err
 		}
 		return entity, nil
 	}
 
-	avatarURL := ""
-	if profile.HeadimgURL != nil {
-		avatarURL = strings.TrimSpace(*profile.HeadimgURL)
+	name := onePassEntityName(s.Config.OnePassSiteID, profile.OpenID)
+	if entity, err := s.Store.GetEntityByName(ctx, name, model.EntityUser); err == nil {
+		if err := s.updateEntityFromOnePass(ctx, entity, profile); err != nil {
+			return nil, err
+		}
+		if _, err := s.upsertOnePassExternalIdentity(ctx, entity.ID, profile); err != nil {
+			return nil, err
+		}
+		return entity, nil
 	}
+
 	entity := &model.Entity{
 		PublicID:    uuid.NewString(),
 		EntityType:  model.EntityUser,
 		Name:        name,
 		DisplayName: onePassDisplayName(profile),
-		AvatarURL:   avatarURL,
+		AvatarURL:   onePassAvatarURL(profile),
 		Status:      "active",
 		Metadata:    onePassMetadata(profile),
 	}
@@ -256,6 +359,9 @@ func (s *Server) findOrCreateOnePassEntity(ctx context.Context, profile *onePass
 		if existing, getErr := s.Store.GetEntityByName(ctx, name, model.EntityUser); getErr == nil {
 			return existing, nil
 		}
+		return nil, err
+	}
+	if _, err := s.upsertOnePassExternalIdentity(ctx, entity.ID, profile); err != nil {
 		return nil, err
 	}
 	return entity, nil

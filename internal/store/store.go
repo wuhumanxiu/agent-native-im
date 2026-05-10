@@ -13,6 +13,7 @@ import (
 type Store interface {
 	EntityStore
 	CredentialStore
+	ExternalIdentityStore
 	ConversationStore
 	ParticipantStore
 	MessageStore
@@ -110,6 +111,15 @@ type CredentialStore interface {
 	DeleteCredential(ctx context.Context, credentialID int64) error
 	DeleteCredentialsByType(ctx context.Context, entityID int64, credType model.CredType) error
 	DeleteCredentialsByTypeExceptHash(ctx context.Context, entityID int64, credType model.CredType, keepSecretHash string) error
+}
+
+type ExternalIdentityStore interface {
+	CreateExternalIdentity(ctx context.Context, identity *model.ExternalIdentity) error
+	GetExternalIdentityByID(ctx context.Context, id int64) (*model.ExternalIdentity, error)
+	GetExternalIdentityByProviderSubject(ctx context.Context, provider, providerSubject string) (*model.ExternalIdentity, error)
+	ListExternalIdentitiesByEntity(ctx context.Context, entityID int64) ([]*model.ExternalIdentity, error)
+	UpdateExternalIdentity(ctx context.Context, identity *model.ExternalIdentity) error
+	DeleteExternalIdentity(ctx context.Context, identityID int64) error
 }
 
 type ConversationStore interface {

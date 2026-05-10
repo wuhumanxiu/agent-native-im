@@ -81,8 +81,11 @@ func NewRouter(s *Server) *gin.Engine {
 			full.Use(auth.RequireFullAuth())
 			{
 				// User management
+				full.GET("/me/auth-methods", s.HandleAuthMethods)
 				full.PUT("/me", s.HandleUpdateProfile)
 				full.PUT("/me/password", s.HandleChangePassword)
+				full.POST("/me/external-identities/1pass/link", rateLimiters["login"].Middleware(), s.HandleLinkOnePass)
+				full.DELETE("/me/external-identities/:id", s.HandleUnlinkExternalIdentity)
 
 				full.GET("/me/devices", s.HandleListDevices)
 				full.DELETE("/me/devices/:deviceId", s.HandleKickDevice)
