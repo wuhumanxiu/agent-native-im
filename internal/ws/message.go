@@ -34,12 +34,13 @@ type WSMessage struct {
 //   error            - error notification
 
 type SendPayload struct {
-	ConversationID int64               `json:"conversation_id"`
-	StreamID       string              `json:"stream_id,omitempty"`
-	StreamType     string              `json:"stream_type,omitempty"` // start, delta, end
-	ContentType    model.ContentType   `json:"content_type,omitempty"`
-	Layers         model.MessageLayers `json:"layers"`
-	Attachments    []model.Attachment  `json:"attachments,omitempty"`
-	Mentions       []int64             `json:"mentions,omitempty"`
-	ReplyTo        *int64              `json:"reply_to,omitempty"`
+	ConversationID   int64               `json:"conversation_id"`
+	StreamID         string              `json:"stream_id,omitempty"`
+	StreamType       string              `json:"stream_type,omitempty"` // start, delta, end
+	ContentType      model.ContentType   `json:"content_type,omitempty"`
+	Layers           model.MessageLayers `json:"layers"`
+	Attachments      []model.Attachment  `json:"attachments,omitempty"`
+	Mentions         []int64             `json:"mentions,omitempty"`
+	MentionPublicIDs []string            `json:"mention_public_ids,omitempty"`
+	ReplyTo          *int64              `json:"reply_to,omitempty"`
 }

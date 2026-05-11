@@ -707,10 +707,15 @@ Send a message to a conversation.
     },
     "attachments": [ { "url": "...", "filename": "...", "size": 1024, "mime_type": "..." } ],
     "stream_id": "string (optional)",
+    "mention_public_ids": ["550e8400-e29b-41d4-a716-446655440000"],
     "mentions": [2, 3],
     "reply_to": 456
   }
   ```
+- **Mentions**: Prefer `mention_public_ids` for external clients and agent
+  adapters. `mentions` remains a legacy internal entity-id fallback. Both
+  fields are validated against current conversation participants and persisted
+  as internal routing IDs.
 - **Response** `201`: Message object
 - **Errors**: `403 PERM_NOT_PARTICIPANT`, `403 PERM_OBSERVER_RESTRICTED`
 

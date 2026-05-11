@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wzfukui/agent-native-im/internal/mention"
 	"github.com/wzfukui/agent-native-im/internal/model"
 	"github.com/wzfukui/agent-native-im/internal/store"
 )
@@ -777,6 +778,11 @@ func (h *Hub) handleSend(client *Client, rawData []byte) {
 	if contentType == "" {
 		contentType = model.ContentText
 	}
+	resolvedMentions, err := mention.ResolveEntityIDs(ctx, h.store, payload.ConversationID, payload.Mentions, payload.MentionPublicIDs)
+	if err != nil {
+		client.sendError("mentioned entity is not a participant")
+		return
+	}
 
 	msg := &model.Message{
 		ConversationID: payload.ConversationID,
@@ -785,7 +791,7 @@ func (h *Hub) handleSend(client *Client, rawData []byte) {
 		ContentType:    contentType,
 		Layers:         payload.Layers,
 		Attachments:    payload.Attachments,
-		Mentions:       payload.Mentions,
+		Mentions:       resolvedMentions,
 		ReplyTo:        payload.ReplyTo,
 	}
 
@@ -802,6 +808,8 @@ func (h *Hub) handleSend(client *Client, rawData []byte) {
 		msg.SenderType = string(sender.EntityType)
 		msg.Sender = sender
 	}
+	msg.MentionPublicIDs = mention.PublicIDsForEntityIDs(ctx, h.store, msg.Mentions)
+	msg.MentionedEntities = mention.MentionedEntities(ctx, h.store, msg.Mentions)
 
 	h.BroadcastMessage(msg)
 }

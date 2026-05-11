@@ -164,6 +164,51 @@ func TestSendMessageWithMentions(t *testing.T) {
 	}
 }
 
+func TestSendMessageWithMentionPublicIDs(t *testing.T) {
+	truncateAll(t)
+	token := seedAdmin(t)
+
+	resp := doJSON(t, "POST", "/api/v1/entities", ptr(token), map[string]string{"name": "public-mention-bot"})
+	assertStatus(t, resp, http.StatusCreated)
+	botData := parseOK(t, resp)
+	botEntity, _ := botData["entity"].(map[string]interface{})
+	botID := botEntity["id"].(float64)
+	botPublicID, _ := botEntity["public_id"].(string)
+	if botPublicID == "" {
+		t.Fatal("expected bot public_id")
+	}
+
+	resp = doJSON(t, "POST", "/api/v1/conversations", ptr(token), map[string]interface{}{
+		"title":           "Public Mention Test",
+		"conv_type":       "group",
+		"participant_ids": []float64{botID},
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	convID := int(parseOK(t, resp)["id"].(float64))
+
+	resp = doJSON(t, "POST", "/api/v1/messages/send", ptr(token), map[string]interface{}{
+		"conversation_id":    convID,
+		"content_type":       "text",
+		"layers":             map[string]string{"summary": "@public-mention-bot check this out"},
+		"mention_public_ids": []string{botPublicID},
+	})
+	assertStatus(t, resp, http.StatusCreated)
+
+	data := parseOK(t, resp)
+	mentions, ok := data["mentions"].([]interface{})
+	if !ok || len(mentions) != 1 || mentions[0].(float64) != botID {
+		t.Fatalf("expected internal mention id %v, got %v", botID, data["mentions"])
+	}
+	publicIDs, ok := data["mention_public_ids"].([]interface{})
+	if !ok || len(publicIDs) != 1 || publicIDs[0] != botPublicID {
+		t.Fatalf("expected mention_public_ids %v, got %v", botPublicID, data["mention_public_ids"])
+	}
+	entities, ok := data["mentioned_entities"].([]interface{})
+	if !ok || len(entities) != 1 {
+		t.Fatalf("expected mentioned_entities, got %v", data["mentioned_entities"])
+	}
+}
+
 func TestSendMessageAllContentTypes(t *testing.T) {
 	truncateAll(t)
 	token := seedAdmin(t)
@@ -609,6 +654,15 @@ func TestMentionNonParticipant(t *testing.T) {
 		"content_type":    "text",
 		"layers":          map[string]string{"summary": "@outsider-bot hello"},
 		"mentions":        []float64{botID},
+	})
+	assertStatus(t, resp, http.StatusBadRequest)
+
+	// Public UUID mentions use the same participant validation.
+	resp = doJSON(t, "POST", "/api/v1/messages/send", ptr(token), map[string]interface{}{
+		"conversation_id":    convID,
+		"content_type":       "text",
+		"layers":             map[string]string{"summary": "@outsider-bot hello"},
+		"mention_public_ids": []string{botEntity["public_id"].(string)},
 	})
 	assertStatus(t, resp, http.StatusBadRequest)
 }

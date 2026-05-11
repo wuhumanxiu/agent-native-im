@@ -129,7 +129,8 @@ Additional optional fields on send:
 |-------|------|-------------|
 | `content_type` | string | `text` (default), `markdown`, `code`, `image`, `audio`, `file`, `artifact`, `system` |
 | `attachments` | array | File attachments (URL, filename, size) |
-| `mentions` | array of int64 | Entity IDs to @mention (must be conversation participants) |
+| `mention_public_ids` | array of string | Public UUIDs to @mention. Preferred for bots, agents, and external clients. |
+| `mentions` | array of int64 | Legacy internal entity IDs to @mention (must be conversation participants) |
 | `reply_to` | int64 | Message ID this is a reply to |
 | `stream_id` | string | Stream identifier for streaming responses |
 

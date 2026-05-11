@@ -10,16 +10,16 @@ import (
 type ContentType string
 
 const (
-	ContentText     ContentType = "text"
-	ContentMarkdown ContentType = "markdown"
-	ContentCode     ContentType = "code"
-	ContentImage    ContentType = "image"
-	ContentAudio    ContentType = "audio"
-	ContentVideo    ContentType = "video"
-	ContentFile     ContentType = "file"
-	ContentArtifact      ContentType = "artifact"
-	ContentSystem        ContentType = "system"
-	ContentTaskHandover  ContentType = "task_handover"
+	ContentText         ContentType = "text"
+	ContentMarkdown     ContentType = "markdown"
+	ContentCode         ContentType = "code"
+	ContentImage        ContentType = "image"
+	ContentAudio        ContentType = "audio"
+	ContentVideo        ContentType = "video"
+	ContentFile         ContentType = "file"
+	ContentArtifact     ContentType = "artifact"
+	ContentSystem       ContentType = "system"
+	ContentTaskHandover ContentType = "task_handover"
 )
 
 type StatusLayer struct {
@@ -60,20 +60,22 @@ type Attachment struct {
 type Message struct {
 	bun.BaseModel `bun:"table:messages"`
 
-	ID             int64         `bun:"id,pk,autoincrement" json:"id"`
-	ConversationID int64         `bun:"conversation_id,notnull" json:"conversation_id"`
-	SenderID       int64         `bun:"sender_id,notnull" json:"sender_id"`
-	StreamID       string        `bun:"stream_id" json:"stream_id,omitempty"`
-	ContentType    ContentType   `bun:"content_type,notnull,default:'text'" json:"content_type"`
-	Layers         MessageLayers `bun:"layers,type:jsonb" json:"layers"`
-	Attachments    []Attachment  `bun:"attachments,type:jsonb" json:"attachments,omitempty"`
-	Mentions       []int64       `bun:"mentions,type:jsonb,default:'[]'" json:"mentions,omitempty"`
-	ReplyTo        *int64        `bun:"reply_to" json:"reply_to,omitempty"`
-	RevokedAt      *time.Time    `bun:"revoked_at" json:"revoked_at,omitempty"`
-	CreatedAt      time.Time     `bun:"created_at,nullzero,notnull,default:now()" json:"created_at"`
+	ID                int64         `bun:"id,pk,autoincrement" json:"id"`
+	ConversationID    int64         `bun:"conversation_id,notnull" json:"conversation_id"`
+	SenderID          int64         `bun:"sender_id,notnull" json:"sender_id"`
+	StreamID          string        `bun:"stream_id" json:"stream_id,omitempty"`
+	ContentType       ContentType   `bun:"content_type,notnull,default:'text'" json:"content_type"`
+	Layers            MessageLayers `bun:"layers,type:jsonb" json:"layers"`
+	Attachments       []Attachment  `bun:"attachments,type:jsonb" json:"attachments,omitempty"`
+	Mentions          []int64       `bun:"mentions,type:jsonb,default:'[]'" json:"mentions,omitempty"`
+	MentionPublicIDs  []string      `bun:"-" json:"mention_public_ids,omitempty"`
+	MentionedEntities []*Entity     `bun:"-" json:"mentioned_entities,omitempty"`
+	ReplyTo           *int64        `bun:"reply_to" json:"reply_to,omitempty"`
+	RevokedAt         *time.Time    `bun:"revoked_at" json:"revoked_at,omitempty"`
+	CreatedAt         time.Time     `bun:"created_at,nullzero,notnull,default:now()" json:"created_at"`
 
 	// Computed fields (populated by handler, not stored in DB)
-	SenderType string             `bun:"-" json:"sender_type,omitempty"`
-	Sender     *Entity            `bun:"-" json:"sender,omitempty"`
-	Reactions  []ReactionSummary  `bun:"-" json:"reactions,omitempty"`
+	SenderType string            `bun:"-" json:"sender_type,omitempty"`
+	Sender     *Entity           `bun:"-" json:"sender,omitempty"`
+	Reactions  []ReactionSummary `bun:"-" json:"reactions,omitempty"`
 }

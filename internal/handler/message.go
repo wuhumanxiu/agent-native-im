@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"net/url"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wzfukui/agent-native-im/internal/auth"
+	"github.com/wzfukui/agent-native-im/internal/mention"
 	"github.com/wzfukui/agent-native-im/internal/model"
 	"github.com/wzfukui/agent-native-im/internal/ws"
 )
@@ -54,13 +55,24 @@ func (s *Server) populateSenders(ctx context.Context, msgs []*model.Message) {
 }
 
 type sendMessageRequest struct {
-	ConversationID int64               `json:"conversation_id" binding:"required"`
-	ContentType    string              `json:"content_type,omitempty"`
-	Layers         model.MessageLayers `json:"layers"`
-	Attachments    []model.Attachment  `json:"attachments,omitempty"`
-	StreamID       string              `json:"stream_id,omitempty"`
-	Mentions       []int64             `json:"mentions,omitempty"`
-	ReplyTo        *int64              `json:"reply_to,omitempty"`
+	ConversationID   int64               `json:"conversation_id" binding:"required"`
+	ContentType      string              `json:"content_type,omitempty"`
+	Layers           model.MessageLayers `json:"layers"`
+	Attachments      []model.Attachment  `json:"attachments,omitempty"`
+	StreamID         string              `json:"stream_id,omitempty"`
+	Mentions         []int64             `json:"mentions,omitempty"`
+	MentionPublicIDs []string            `json:"mention_public_ids,omitempty"`
+	ReplyTo          *int64              `json:"reply_to,omitempty"`
+}
+
+func (s *Server) populateMentionPublicRefs(ctx context.Context, msgs []*model.Message) {
+	for _, msg := range msgs {
+		if msg == nil || len(msg.Mentions) == 0 {
+			continue
+		}
+		msg.MentionPublicIDs = mention.PublicIDsForEntityIDs(ctx, s.Store, msg.Mentions)
+		msg.MentionedEntities = mention.MentionedEntities(ctx, s.Store, msg.Mentions)
+	}
 }
 
 func attachmentStoredName(raw string) string {
@@ -101,6 +113,7 @@ func (s *Server) HandleGetMessage(c *gin.Context) {
 	}
 
 	s.populateSenders(ctx, []*model.Message{msg})
+	s.populateMentionPublicRefs(ctx, []*model.Message{msg})
 	OK(c, http.StatusOK, msg)
 }
 
@@ -126,13 +139,12 @@ func (s *Server) HandleSendMessage(c *gin.Context) {
 		return
 	}
 
-	// Validate mentions are actual participants
-	for _, mentionID := range req.Mentions {
-		isMember, err := s.Store.IsParticipant(ctx, req.ConversationID, mentionID)
-		if err != nil || !isMember {
-			Fail(c, http.StatusBadRequest, "mentioned entity is not a participant")
-			return
-		}
+	// Resolve public UUID mentions into internal IDs and validate all mentions
+	// against the current participant set.
+	resolvedMentions, err := mention.ResolveEntityIDs(ctx, s.Store, req.ConversationID, req.Mentions, req.MentionPublicIDs)
+	if err != nil {
+		Fail(c, http.StatusBadRequest, "mentioned entity is not a participant")
+		return
 	}
 
 	contentType := model.ContentType(req.ContentType)
@@ -174,7 +186,7 @@ func (s *Server) HandleSendMessage(c *gin.Context) {
 		ContentType:    contentType,
 		Layers:         req.Layers,
 		Attachments:    req.Attachments,
-		Mentions:       req.Mentions,
+		Mentions:       resolvedMentions,
 		ReplyTo:        req.ReplyTo,
 	}
 
@@ -191,6 +203,7 @@ func (s *Server) HandleSendMessage(c *gin.Context) {
 		msg.SenderType = string(sender.EntityType)
 		msg.Sender = sender
 	}
+	s.populateMentionPublicRefs(ctx, []*model.Message{msg})
 
 	// Broadcast via WebSocket
 	if s.Hub != nil {
@@ -539,6 +552,7 @@ func (s *Server) HandleListMessages(c *gin.Context) {
 
 	// Populate sender info for each message (batch)
 	s.populateSenders(ctx, msgs)
+	s.populateMentionPublicRefs(ctx, msgs)
 
 	// Populate reactions
 	if len(msgs) > 0 {
@@ -601,6 +615,7 @@ func (s *Server) HandleGlobalSearchMessages(c *gin.Context) {
 
 	// Populate sender info (batch)
 	s.populateSenders(ctx, msgs)
+	s.populateMentionPublicRefs(ctx, msgs)
 
 	// Enrich results with conversation title
 	type searchResult struct {
