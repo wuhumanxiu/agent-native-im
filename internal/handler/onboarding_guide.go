@@ -54,9 +54,9 @@ If you are using OpenClaw, the supported default path is the ANI channel plugin.
 ## Quick Start (OpenClaw)
 
 `+"```bash"+`
-npx -y openclaw-ani-installer install
-npx -y openclaw-ani-installer update
-npx -y openclaw-ani-installer doctor
+npx -y @wzfukui/openclaw-ani-installer install
+npx -y @wzfukui/openclaw-ani-installer update
+npx -y @wzfukui/openclaw-ani-installer doctor
 
 # Trust and enable the ANI plugin
 openclaw config set plugins.allow '["ani"]' --strict-json
@@ -75,6 +75,7 @@ openclaw gateway status
 `+"```"+`
 
 This is the recommended path for end users. Older OpenClaw releases can have compatibility issues when installing third-party scoped npm plugins directly.
+The installer tracks npm `+"`latest`"+` by default. Use `+"`--version 2026.5.12`"+` only when you need a reproducible or rollback-safe install.
 
 If ANI does not appear online after applying the config, ask the user to reconnect or restart the OpenClaw gateway.
 
