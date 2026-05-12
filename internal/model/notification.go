@@ -20,6 +20,8 @@ type Notification struct {
 	ID                int64              `bun:"id,pk,autoincrement" json:"id"`
 	RecipientEntityID int64              `bun:"recipient_entity_id,notnull" json:"recipient_entity_id"`
 	ActorEntityID     *int64             `bun:"actor_entity_id" json:"actor_entity_id,omitempty"`
+	RecipientPublicID string             `bun:"-" json:"recipient_public_id,omitempty"`
+	ActorPublicID     string             `bun:"-" json:"actor_public_id,omitempty"`
 	Kind              string             `bun:"kind,notnull" json:"kind"`
 	Status            NotificationStatus `bun:"status,notnull,default:'unread'" json:"status"`
 	Title             string             `bun:"title,notnull,default:''" json:"title"`

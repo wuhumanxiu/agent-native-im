@@ -120,6 +120,54 @@ func TestCreateDirectConversationAsOwnedBot(t *testing.T) {
 	}
 }
 
+func TestCreateConversationAcceptsPublicIDs(t *testing.T) {
+	truncateAll(t)
+	adminToken := seedAdmin(t)
+
+	botResp := doJSON(t, "POST", "/api/v1/entities", ptr(adminToken), map[string]string{"name": "public-id-source-bot"})
+	assertStatus(t, botResp, http.StatusCreated)
+	botEntity := parseOK(t, botResp)["entity"].(map[string]interface{})
+	botPublicID := botEntity["public_id"].(string)
+
+	userResp := doJSON(t, "POST", "/api/v1/admin/users", ptr(adminToken), map[string]string{
+		"username": "public-id-peer",
+		"password": "Peerpass1",
+	})
+	assertStatus(t, userResp, http.StatusCreated)
+	peerEntity := parseOK(t, userResp)
+	peerPublicID := peerEntity["public_id"].(string)
+	peerToken := login(t, "public-id-peer", "Peerpass1")
+
+	reqResp := doJSON(t, "POST", "/api/v1/friends/requests", ptr(adminToken), map[string]any{
+		"source_public_id": botPublicID,
+		"target_public_id": peerPublicID,
+	})
+	assertStatus(t, reqResp, http.StatusCreated)
+	reqID := int(parseOK(t, reqResp)["id"].(float64))
+
+	acceptResp := doJSON(t, "POST", fmt.Sprintf("/api/v1/friends/requests/%d/accept", reqID), ptr(peerToken), nil)
+	assertStatus(t, acceptResp, http.StatusOK)
+
+	convResp := doJSON(t, "POST", "/api/v1/conversations", ptr(adminToken), map[string]any{
+		"source_public_id":       botPublicID,
+		"title":                  "Bot -> Peer by public_id",
+		"conv_type":              "direct",
+		"participant_public_ids": []string{peerPublicID},
+	})
+	assertStatus(t, convResp, http.StatusCreated)
+	conv := parseOK(t, convResp)
+	participants := conv["participants"].([]interface{})
+	if len(participants) != 2 {
+		t.Fatalf("expected 2 participants, got %d", len(participants))
+	}
+	for _, raw := range participants {
+		participant := raw.(map[string]interface{})
+		if participant["entity_public_id"] == "" {
+			t.Fatalf("expected participant entity_public_id, got %v", participant)
+		}
+	}
+}
+
 func TestCreateGroupConversation(t *testing.T) {
 	truncateAll(t)
 	token := seedAdmin(t)

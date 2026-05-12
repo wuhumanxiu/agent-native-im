@@ -77,3 +77,64 @@ func (s *Server) attachEntitiesIdentity(ctx context.Context, entities []*model.E
 		s.attachEntityIdentity(ctx, entity)
 	}
 }
+
+func (s *Server) attachParticipantIdentity(ctx context.Context, participant *model.Participant) {
+	if participant == nil {
+		return
+	}
+	if participant.Entity == nil && participant.EntityID > 0 {
+		participant.Entity, _ = s.Store.GetEntityByID(ctx, participant.EntityID)
+	}
+	s.attachEntityIdentity(ctx, participant.Entity)
+	if participant.Entity != nil {
+		participant.EntityPublicID = participant.Entity.PublicID
+	}
+}
+
+func (s *Server) attachParticipantsIdentity(ctx context.Context, participants []*model.Participant) {
+	for _, participant := range participants {
+		s.attachParticipantIdentity(ctx, participant)
+	}
+}
+
+func (s *Server) attachFriendRequestIdentity(ctx context.Context, req *model.FriendRequest) {
+	if req == nil {
+		return
+	}
+	if req.SourceEntity == nil && req.SourceEntityID > 0 {
+		req.SourceEntity, _ = s.Store.GetEntityByID(ctx, req.SourceEntityID)
+	}
+	if req.TargetEntity == nil && req.TargetEntityID > 0 {
+		req.TargetEntity, _ = s.Store.GetEntityByID(ctx, req.TargetEntityID)
+	}
+	s.attachEntityIdentity(ctx, req.SourceEntity)
+	s.attachEntityIdentity(ctx, req.TargetEntity)
+	if req.SourceEntity != nil {
+		req.SourcePublicID = req.SourceEntity.PublicID
+	}
+	if req.TargetEntity != nil {
+		req.TargetPublicID = req.TargetEntity.PublicID
+	}
+}
+
+func (s *Server) attachFriendRequestsIdentity(ctx context.Context, reqs []*model.FriendRequest) {
+	for _, req := range reqs {
+		s.attachFriendRequestIdentity(ctx, req)
+	}
+}
+
+func (s *Server) attachConversationIdentity(ctx context.Context, conv *model.Conversation) {
+	if conv == nil {
+		return
+	}
+	s.attachParticipantsIdentity(ctx, conv.Participants)
+	if conv.LastMessage != nil {
+		s.populateMentionPublicRefs(ctx, []*model.Message{conv.LastMessage})
+	}
+}
+
+func (s *Server) attachConversationsIdentity(ctx context.Context, convs []*model.Conversation) {
+	for _, conv := range convs {
+		s.attachConversationIdentity(ctx, conv)
+	}
+}

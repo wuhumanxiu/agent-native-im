@@ -11,11 +11,11 @@ const (
 	ErrCodeAuthBootstrapOnly  = "AUTH_BOOTSTRAP_ONLY"
 
 	// ── Permission ──
-	ErrCodePermDenied        = "PERM_DENIED"
-	ErrCodePermNotOwner      = "PERM_NOT_OWNER"
+	ErrCodePermDenied         = "PERM_DENIED"
+	ErrCodePermNotOwner       = "PERM_NOT_OWNER"
 	ErrCodePermNotParticipant = "PERM_NOT_PARTICIPANT"
-	ErrCodePermNotAdmin      = "PERM_NOT_ADMIN"
-	ErrCodePermObserver      = "PERM_OBSERVER_RESTRICTED"
+	ErrCodePermNotAdmin       = "PERM_NOT_ADMIN"
+	ErrCodePermObserver       = "PERM_OBSERVER_RESTRICTED"
 
 	// ── Validation ──
 	ErrCodeValidation       = "VALIDATION_ERROR"
@@ -23,22 +23,22 @@ const (
 	ErrCodeValidationFormat = "VALIDATION_FORMAT_ERROR"
 
 	// ── Not Found ──
-	ErrCodeNotFound         = "NOT_FOUND"
-	ErrCodeEntityNotFound   = "ENTITY_NOT_FOUND"
-	ErrCodeMessageNotFound  = "MESSAGE_NOT_FOUND"
-	ErrCodeConvNotFound     = "CONVERSATION_NOT_FOUND"
-	ErrCodeTaskNotFound     = "TASK_NOT_FOUND"
-	ErrCodeInviteNotFound   = "INVITE_NOT_FOUND"
-	ErrCodeWebhookNotFound  = "WEBHOOK_NOT_FOUND"
-	ErrCodeDeviceNotFound   = "DEVICE_NOT_FOUND"
+	ErrCodeNotFound        = "NOT_FOUND"
+	ErrCodeEntityNotFound  = "ENTITY_NOT_FOUND"
+	ErrCodeMessageNotFound = "MESSAGE_NOT_FOUND"
+	ErrCodeConvNotFound    = "CONVERSATION_NOT_FOUND"
+	ErrCodeTaskNotFound    = "TASK_NOT_FOUND"
+	ErrCodeInviteNotFound  = "INVITE_NOT_FOUND"
+	ErrCodeWebhookNotFound = "WEBHOOK_NOT_FOUND"
+	ErrCodeDeviceNotFound  = "DEVICE_NOT_FOUND"
 
 	// ── Conflict ──
-	ErrCodeConflict         = "CONFLICT"
-	ErrCodeDuplicateName    = "CONFLICT_DUPLICATE_NAME"
-	ErrCodeDuplicateUser    = "CONFLICT_DUPLICATE_USER"
-	ErrCodeAlreadyMember    = "CONFLICT_ALREADY_MEMBER"
-	ErrCodeAlreadyRevoked   = "CONFLICT_ALREADY_REVOKED"
-	ErrCodeAlreadyResolved  = "CONFLICT_ALREADY_RESOLVED"
+	ErrCodeConflict        = "CONFLICT"
+	ErrCodeDuplicateName   = "CONFLICT_DUPLICATE_NAME"
+	ErrCodeDuplicateUser   = "CONFLICT_DUPLICATE_USER"
+	ErrCodeAlreadyMember   = "CONFLICT_ALREADY_MEMBER"
+	ErrCodeAlreadyRevoked  = "CONFLICT_ALREADY_REVOKED"
+	ErrCodeAlreadyResolved = "CONFLICT_ALREADY_RESOLVED"
 
 	// ── State ──
 	ErrCodeStateBadTransition = "STATE_BAD_TRANSITION"

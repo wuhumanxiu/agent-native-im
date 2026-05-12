@@ -21,6 +21,8 @@ type FriendRequest struct {
 	ID             int64               `bun:"id,pk,autoincrement" json:"id"`
 	SourceEntityID int64               `bun:"source_entity_id,notnull" json:"source_entity_id"`
 	TargetEntityID int64               `bun:"target_entity_id,notnull" json:"target_entity_id"`
+	SourcePublicID string              `bun:"-" json:"source_public_id,omitempty"`
+	TargetPublicID string              `bun:"-" json:"target_public_id,omitempty"`
 	Status         FriendRequestStatus `bun:"status,notnull,default:'pending'" json:"status"`
 	Message        string              `bun:"message" json:"message,omitempty"`
 	ResolvedBy     *int64              `bun:"resolved_by" json:"resolved_by,omitempty"`

@@ -90,6 +90,56 @@ func TestFriendRequestLifecycle(t *testing.T) {
 	}
 }
 
+func TestFriendRequestLifecycleWithPublicIDs(t *testing.T) {
+	truncateAll(t)
+	adminToken := seedAdmin(t)
+
+	resp := doJSON(t, "POST", "/api/v1/admin/users", ptr(adminToken), map[string]string{
+		"username": "friend-public-a",
+		"password": "Friendpass1",
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	userA := parseOK(t, resp)
+	userAPublicID := userA["public_id"].(string)
+	userAToken := login(t, "friend-public-a", "Friendpass1")
+
+	resp = doJSON(t, "POST", "/api/v1/admin/users", ptr(adminToken), map[string]string{
+		"username": "friend-public-b",
+		"password": "Friendpass1",
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	userB := parseOK(t, resp)
+	userBPublicID := userB["public_id"].(string)
+	userBToken := login(t, "friend-public-b", "Friendpass1")
+
+	resp = doJSON(t, "POST", "/api/v1/friends/requests", ptr(userAToken), map[string]interface{}{
+		"target_public_id": userBPublicID,
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	request := parseOK(t, resp)
+	reqID := int(request["id"].(float64))
+	if request["source_public_id"] != userAPublicID || request["target_public_id"] != userBPublicID {
+		t.Fatalf("expected public ids on request, got %v", request)
+	}
+
+	resp = doJSON(t, "GET", "/api/v1/friends/requests?direction=incoming&public_id="+userBPublicID, ptr(userBToken), nil)
+	assertStatus(t, resp, http.StatusOK)
+	incoming := parseResponse(t, resp)["data"].([]interface{})
+	if len(incoming) != 1 {
+		t.Fatalf("expected 1 incoming request, got %d", len(incoming))
+	}
+
+	resp = doJSON(t, "POST", fmt.Sprintf("/api/v1/friends/requests/%d/accept?public_id=%s", reqID, userBPublicID), ptr(userBToken), nil)
+	assertStatus(t, resp, http.StatusOK)
+
+	resp = doJSON(t, "GET", "/api/v1/friends?public_id="+userAPublicID, ptr(userAToken), nil)
+	assertStatus(t, resp, http.StatusOK)
+	friends := parseResponse(t, resp)["data"].([]interface{})
+	if len(friends) != 1 {
+		t.Fatalf("expected 1 friend, got %d", len(friends))
+	}
+}
+
 func TestDirectConversationRequiresFriendshipUnlessBotOptIn(t *testing.T) {
 	truncateAll(t)
 	adminToken := seedAdmin(t)

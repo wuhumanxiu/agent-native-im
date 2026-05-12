@@ -36,6 +36,12 @@ func (s *Server) attachNotificationIdentity(ctx context.Context, notification *m
 	}
 	s.attachEntityIdentity(ctx, notification.RecipientEntity)
 	s.attachEntityIdentity(ctx, notification.ActorEntity)
+	if notification.RecipientEntity != nil {
+		notification.RecipientPublicID = notification.RecipientEntity.PublicID
+	}
+	if notification.ActorEntity != nil {
+		notification.ActorPublicID = notification.ActorEntity.PublicID
+	}
 }
 
 func notificationConversationID(notification *model.Notification) int64 {
@@ -209,8 +215,8 @@ func (s *Server) createNotificationForRecipient(ctx context.Context, recipientID
 
 // GET /notifications?entity_id=&status=&limit=
 func (s *Server) HandleListNotifications(c *gin.Context) {
-	entityID, _ := strconv.ParseInt(strings.TrimSpace(c.Query("entity_id")), 10, 64)
-	entity, ok := s.resolveActingEntity(c, entityID)
+	entityID := parseOptionalEntityID(c.Query("entity_id"))
+	entity, ok := s.resolveActingEntityByInputs(c, entityID, c.Query("public_id"))
 	if !ok {
 		return
 	}
@@ -325,8 +331,8 @@ func (s *Server) HandleMarkNotificationRead(c *gin.Context) {
 		Fail(c, http.StatusBadRequest, "invalid notification id")
 		return
 	}
-	entityID, _ := strconv.ParseInt(strings.TrimSpace(c.Query("entity_id")), 10, 64)
-	entity, ok := s.resolveActingEntity(c, entityID)
+	entityID := parseOptionalEntityID(c.Query("entity_id"))
+	entity, ok := s.resolveActingEntityByInputs(c, entityID, c.Query("public_id"))
 	if !ok {
 		return
 	}
@@ -345,8 +351,8 @@ func (s *Server) HandleMarkNotificationRead(c *gin.Context) {
 
 // POST /notifications/read-all?entity_id=
 func (s *Server) HandleMarkAllNotificationsRead(c *gin.Context) {
-	entityID, _ := strconv.ParseInt(strings.TrimSpace(c.Query("entity_id")), 10, 64)
-	entity, ok := s.resolveActingEntity(c, entityID)
+	entityID := parseOptionalEntityID(c.Query("entity_id"))
+	entity, ok := s.resolveActingEntityByInputs(c, entityID, c.Query("public_id"))
 	if !ok {
 		return
 	}
@@ -356,7 +362,7 @@ func (s *Server) HandleMarkAllNotificationsRead(c *gin.Context) {
 	}
 	s.Hub.SendToEntity(entity.ID, ws.WSMessage{
 		Type: "notification.read_all",
-		Data: map[string]any{"entity_id": entity.ID},
+		Data: map[string]any{"entity_id": entity.ID, "entity_public_id": entity.PublicID},
 	})
-	OK(c, http.StatusOK, gin.H{"entity_id": entity.ID, "status": "ok"})
+	OK(c, http.StatusOK, gin.H{"entity_id": entity.ID, "public_id": entity.PublicID, "status": "ok"})
 }

@@ -24,7 +24,7 @@ func TestObserverCannotSendMessage(t *testing.T) {
 
 	// Create conversation
 	resp = doJSON(t, "POST", "/api/v1/conversations", ptr(token), map[string]interface{}{
-		"title":    "Observer Test",
+		"title":     "Observer Test",
 		"conv_type": "group",
 	})
 	assertStatus(t, resp, http.StatusCreated)
@@ -62,7 +62,7 @@ func TestObserverCanReadMessages(t *testing.T) {
 
 	// Create conversation
 	resp = doJSON(t, "POST", "/api/v1/conversations", ptr(token), map[string]interface{}{
-		"title":    "Observer Read Test",
+		"title":     "Observer Read Test",
 		"conv_type": "group",
 	})
 	assertStatus(t, resp, http.StatusCreated)

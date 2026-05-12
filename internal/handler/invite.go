@@ -39,8 +39,8 @@ func (s *Server) HandleCreateInviteLink(c *gin.Context) {
 	}
 
 	var req struct {
-		MaxUses   int    `json:"max_uses"`
-		ExpiresIn int    `json:"expires_in"` // seconds
+		MaxUses   int `json:"max_uses"`
+		ExpiresIn int `json:"expires_in"` // seconds
 	}
 	c.ShouldBindJSON(&req)
 
@@ -114,7 +114,7 @@ func (s *Server) HandleGetInviteInfo(c *gin.Context) {
 	// Get conversation info
 	conv, _ := s.Store.GetConversation(c, link.ConversationID)
 	OK(c, http.StatusOK, gin.H{
-		"invite": link,
+		"invite":       link,
 		"conversation": conv,
 	})
 }
@@ -201,13 +201,13 @@ func (s *Server) HandleJoinViaInvite(c *gin.Context) {
 			"Member joined via invite",
 			name+" joined via invite link",
 			map[string]any{
-				"conversation_id":        link.ConversationID,
-				"conversation_title":     convTitle,
-				"conversation_public_id": conversationPublicID(conv),
-				"joined_entity_id":       entityID,
+				"conversation_id":         link.ConversationID,
+				"conversation_title":      convTitle,
+				"conversation_public_id":  conversationPublicID(conv),
+				"joined_entity_id":        entityID,
 				"joined_entity_public_id": joinedEntityPublicID,
-				"joined_entity_name":     name,
-				"invite_code":            link.Code,
+				"joined_entity_name":      name,
+				"invite_code":             link.Code,
 			},
 		)
 	}

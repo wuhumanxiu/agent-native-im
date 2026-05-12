@@ -18,7 +18,8 @@ type Reaction struct {
 
 // ReactionSummary is the aggregated view returned to clients.
 type ReactionSummary struct {
-	Emoji     string  `json:"emoji"`
-	Count     int     `json:"count"`
-	EntityIDs []int64 `json:"entity_ids"`
+	Emoji     string   `json:"emoji"`
+	Count     int      `json:"count"`
+	EntityIDs []int64  `json:"entity_ids"`
+	PublicIDs []string `json:"public_ids,omitempty"`
 }

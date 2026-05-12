@@ -93,6 +93,26 @@ func TestCreateBot(t *testing.T) {
 	assertStatus(t, resp, http.StatusOK)
 }
 
+func TestBatchPresenceAcceptsPublicIDs(t *testing.T) {
+	truncateAll(t)
+	token := seedAdmin(t)
+
+	resp := doJSON(t, "GET", "/api/v1/me", ptr(token), nil)
+	assertStatus(t, resp, http.StatusOK)
+	me := parseOK(t, resp)
+	publicID := me["public_id"].(string)
+
+	resp = doJSON(t, "POST", "/api/v1/presence/batch", ptr(token), map[string]interface{}{
+		"public_ids": []string{publicID},
+	})
+	assertStatus(t, resp, http.StatusOK)
+	data := parseOK(t, resp)
+	byPublicID := data["presence_by_public_id"].(map[string]interface{})
+	if _, ok := byPublicID[publicID]; !ok {
+		t.Fatalf("expected public id presence entry, got %v", byPublicID)
+	}
+}
+
 func TestCreateBotRequiresExplicitBotID(t *testing.T) {
 	truncateAll(t)
 	token := seedAdmin(t)

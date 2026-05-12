@@ -42,6 +42,10 @@ func TestToggleReaction(t *testing.T) {
 	if r0["count"].(float64) != 1 {
 		t.Fatalf("expected count=1, got %v", r0["count"])
 	}
+	publicIDs, ok := r0["public_ids"].([]interface{})
+	if !ok || len(publicIDs) != 1 {
+		t.Fatalf("expected one public reaction id, got %v", r0["public_ids"])
+	}
 
 	// Toggle off (same emoji again)
 	resp = doJSON(t, "POST", fmt.Sprintf("/api/v1/messages/%d/reactions", msgID), ptr(token), map[string]string{

@@ -549,17 +549,38 @@ func (s *Server) HandleRegenerateEntityToken(c *gin.Context) {
 // HandleBatchPresence returns online status for a batch of entity IDs.
 func (s *Server) HandleBatchPresence(c *gin.Context) {
 	var req struct {
-		EntityIDs []int64 `json:"entity_ids" binding:"required"`
+		EntityIDs []int64  `json:"entity_ids"`
+		PublicIDs []string `json:"public_ids"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, "entity_ids is required")
+		Fail(c, http.StatusBadRequest, "entity_ids or public_ids is required")
 		return
 	}
-	presence := make(map[int64]bool, len(req.EntityIDs))
-	for _, id := range req.EntityIDs {
-		presence[id] = s.Hub.IsOnline(id)
+	entityIDs, ok := s.resolvePublicIDsInput(c, req.EntityIDs, req.PublicIDs, "presence")
+	if !ok {
+		return
 	}
-	OK(c, http.StatusOK, gin.H{"presence": presence})
+	if len(entityIDs) == 0 {
+		FailWithCode(c, http.StatusBadRequest, ErrCodeValidationField, "entity_ids or public_ids is required")
+		return
+	}
+	entities, _ := s.Store.GetEntitiesByIDs(c.Request.Context(), entityIDs)
+	publicByID := make(map[int64]string, len(entities))
+	for _, entity := range entities {
+		s.attachEntityIdentity(c.Request.Context(), entity)
+		if entity != nil {
+			publicByID[entity.ID] = entity.PublicID
+		}
+	}
+	presence := make(map[int64]bool, len(entityIDs))
+	presenceByPublicID := make(map[string]bool, len(entityIDs))
+	for _, id := range entityIDs {
+		presence[id] = s.Hub.IsOnline(id)
+		if publicID := publicByID[id]; publicID != "" {
+			presenceByPublicID[publicID] = s.Hub.IsOnline(id)
+		}
+	}
+	OK(c, http.StatusOK, gin.H{"presence": presence, "presence_by_public_id": presenceByPublicID})
 }
 
 // HandleListDevices returns the list of connected devices for the current entity.

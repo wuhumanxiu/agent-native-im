@@ -70,6 +70,17 @@ func (s *Server) resolveActingEntity(c *gin.Context, requestedID int64) (*model.
 	return entity, true
 }
 
+func (s *Server) resolveActingEntityByInputs(c *gin.Context, requestedID int64, requestedPublicID string) (*model.Entity, bool) {
+	entity, ok := s.resolveEntityPublicIDInput(c, requestedID, requestedPublicID, "acting")
+	if !ok {
+		return nil, false
+	}
+	if entity == nil {
+		return s.resolveActingEntity(c, 0)
+	}
+	return s.resolveActingEntity(c, entity.ID)
+}
+
 func (s *Server) areFriends(ctx *gin.Context, entityA, entityB int64) bool {
 	friendship, err := s.Store.GetFriendship(ctx.Request.Context(), entityA, entityB)
 	return err == nil && friendship != nil
@@ -135,8 +146,8 @@ func (s *Server) HandleSearchDiscoverableEntities(c *gin.Context) {
 
 // GET /friends?entity_id=
 func (s *Server) HandleListFriends(c *gin.Context) {
-	entityID, _ := strconv.ParseInt(strings.TrimSpace(c.Query("entity_id")), 10, 64)
-	entity, ok := s.resolveActingEntity(c, entityID)
+	entityID := parseOptionalEntityID(c.Query("entity_id"))
+	entity, ok := s.resolveActingEntityByInputs(c, entityID, c.Query("public_id"))
 	if !ok {
 		return
 	}
@@ -154,8 +165,8 @@ func (s *Server) HandleListFriends(c *gin.Context) {
 
 // GET /friends/requests
 func (s *Server) HandleListFriendRequests(c *gin.Context) {
-	entityID, _ := strconv.ParseInt(strings.TrimSpace(c.Query("entity_id")), 10, 64)
-	entity, ok := s.resolveActingEntity(c, entityID)
+	entityID := parseOptionalEntityID(c.Query("entity_id"))
+	entity, ok := s.resolveActingEntityByInputs(c, entityID, c.Query("public_id"))
 	if !ok {
 		return
 	}
@@ -166,10 +177,7 @@ func (s *Server) HandleListFriendRequests(c *gin.Context) {
 		Fail(c, http.StatusInternalServerError, "failed to list friend requests")
 		return
 	}
-	for _, req := range reqs {
-		s.attachEntityIdentity(c.Request.Context(), req.SourceEntity)
-		s.attachEntityIdentity(c.Request.Context(), req.TargetEntity)
-	}
+	s.attachFriendRequestsIdentity(c.Request.Context(), reqs)
 	if reqs == nil {
 		reqs = []*model.FriendRequest{}
 	}
@@ -180,7 +188,9 @@ func (s *Server) HandleListFriendRequests(c *gin.Context) {
 func (s *Server) HandleCreateFriendRequest(c *gin.Context) {
 	var req struct {
 		SourceEntityID int64  `json:"source_entity_id"`
-		TargetEntityID int64  `json:"target_entity_id" binding:"required"`
+		SourcePublicID string `json:"source_public_id"`
+		TargetEntityID int64  `json:"target_entity_id"`
+		TargetPublicID string `json:"target_public_id"`
 		Message        string `json:"message"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -188,17 +198,16 @@ func (s *Server) HandleCreateFriendRequest(c *gin.Context) {
 		return
 	}
 
-	source, ok := s.resolveActingEntity(c, req.SourceEntityID)
+	source, ok := s.resolveActingEntityByInputs(c, req.SourceEntityID, req.SourcePublicID)
 	if !ok {
 		return
 	}
-	if req.TargetEntityID == 0 || req.TargetEntityID == source.ID {
-		FailWithCode(c, http.StatusBadRequest, ErrCodeValidationField, "target_entity_id is invalid")
+	target, ok := s.resolveEntityPublicIDInput(c, req.TargetEntityID, req.TargetPublicID, "target")
+	if !ok {
 		return
 	}
-	target, err := s.Store.GetEntityByID(c.Request.Context(), req.TargetEntityID)
-	if err != nil || target == nil {
-		FailWithCode(c, http.StatusNotFound, ErrCodeEntityNotFound, "entity not found")
+	if target == nil || target.ID == source.ID {
+		FailWithCode(c, http.StatusBadRequest, ErrCodeValidationField, "target_entity_id or target_public_id is invalid")
 		return
 	}
 	if target.Status != "active" {
@@ -235,6 +244,7 @@ func (s *Server) HandleCreateFriendRequest(c *gin.Context) {
 		}
 		s.attachEntityIdentity(c.Request.Context(), source)
 		s.attachEntityIdentity(c.Request.Context(), target)
+		s.attachFriendRequestIdentity(c.Request.Context(), reverse)
 		_ = s.broadcastFriendRequestUpdate(c, reverse, "accepted")
 		OK(c, http.StatusCreated, gin.H{"auto_accepted": true, "friendship": friendship, "request": reverse})
 		return
@@ -252,8 +262,7 @@ func (s *Server) HandleCreateFriendRequest(c *gin.Context) {
 	}
 	friendReq.SourceEntity = source
 	friendReq.TargetEntity = target
-	s.attachEntityIdentity(c.Request.Context(), source)
-	s.attachEntityIdentity(c.Request.Context(), target)
+	s.attachFriendRequestIdentity(c.Request.Context(), friendReq)
 	_ = s.broadcastFriendRequestCreated(c, friendReq)
 	OK(c, http.StatusCreated, friendReq)
 }
@@ -281,12 +290,12 @@ func (s *Server) broadcastFriendRequestCreated(c *gin.Context, friendReq *model.
 		"New friend request",
 		fmt.Sprintf("%s sent a friend request", entityDisplayName(friendReq.SourceEntity)),
 		map[string]any{
-			"request_id":        friendReq.ID,
-			"source_entity_id":  friendReq.SourceEntityID,
-			"target_entity_id":  friendReq.TargetEntityID,
-			"status":            friendReq.Status,
-			"source_public_id":  friendReq.SourceEntity.PublicID,
-			"target_public_id":  friendReq.TargetEntity.PublicID,
+			"request_id":          friendReq.ID,
+			"source_entity_id":    friendReq.SourceEntityID,
+			"target_entity_id":    friendReq.TargetEntityID,
+			"status":              friendReq.Status,
+			"source_public_id":    friendReq.SourceEntity.PublicID,
+			"target_public_id":    friendReq.TargetEntity.PublicID,
 			"source_display_name": entityDisplayName(friendReq.SourceEntity),
 			"target_display_name": entityDisplayName(friendReq.TargetEntity),
 		},
@@ -344,13 +353,13 @@ func (s *Server) broadcastFriendRequestUpdate(c *gin.Context, friendReq *model.F
 		title,
 		body,
 		map[string]any{
-			"request_id":         friendReq.ID,
-			"source_entity_id":   friendReq.SourceEntityID,
-			"target_entity_id":   friendReq.TargetEntityID,
-			"status":             friendReq.Status,
-			"resolved_by":        friendReq.ResolvedBy,
-			"source_public_id":   friendReq.SourceEntity.PublicID,
-			"target_public_id":   friendReq.TargetEntity.PublicID,
+			"request_id":          friendReq.ID,
+			"source_entity_id":    friendReq.SourceEntityID,
+			"target_entity_id":    friendReq.TargetEntityID,
+			"status":              friendReq.Status,
+			"resolved_by":         friendReq.ResolvedBy,
+			"source_public_id":    friendReq.SourceEntity.PublicID,
+			"target_public_id":    friendReq.TargetEntity.PublicID,
 			"source_display_name": entityDisplayName(friendReq.SourceEntity),
 			"target_display_name": entityDisplayName(friendReq.TargetEntity),
 		},
@@ -373,8 +382,8 @@ func (s *Server) resolveFriendRequestTarget(c *gin.Context) (*model.FriendReques
 		Fail(c, http.StatusNotFound, "friend request not found")
 		return nil, nil, false
 	}
-	actingEntityID, _ := strconv.ParseInt(strings.TrimSpace(c.Query("entity_id")), 10, 64)
-	entity, ok := s.resolveActingEntity(c, actingEntityID)
+	actingEntityID := parseOptionalEntityID(c.Query("entity_id"))
+	entity, ok := s.resolveActingEntityByInputs(c, actingEntityID, c.Query("public_id"))
 	if !ok {
 		return nil, nil, false
 	}
@@ -407,8 +416,7 @@ func (s *Server) HandleAcceptFriendRequest(c *gin.Context) {
 		Fail(c, http.StatusInternalServerError, "failed to create friendship")
 		return
 	}
-	s.attachEntityIdentity(c.Request.Context(), friendReq.SourceEntity)
-	s.attachEntityIdentity(c.Request.Context(), friendReq.TargetEntity)
+	s.attachFriendRequestIdentity(c.Request.Context(), friendReq)
 	_ = s.broadcastFriendRequestUpdate(c, friendReq, "accepted")
 	OK(c, http.StatusOK, gin.H{"request": friendReq, "friendship": friendship})
 }
@@ -466,16 +474,27 @@ func (s *Server) HandleDeleteFriend(c *gin.Context) {
 		Fail(c, http.StatusBadRequest, "invalid target entity id")
 		return
 	}
-	actingID, _ := strconv.ParseInt(strings.TrimSpace(c.Query("entity_id")), 10, 64)
-	source, ok := s.resolveActingEntity(c, actingID)
+	actingID := parseOptionalEntityID(c.Query("entity_id"))
+	source, ok := s.resolveActingEntityByInputs(c, actingID, c.Query("public_id"))
 	if !ok {
 		return
+	}
+	targetEntity, ok := s.resolveEntityPublicIDInput(c, targetID, c.Query("target_public_id"), "target")
+	if !ok {
+		return
+	}
+	if targetEntity == nil {
+		FailWithCode(c, http.StatusBadRequest, ErrCodeValidationField, "target entity is required")
+		return
+	}
+	if targetEntity != nil {
+		targetID = targetEntity.ID
 	}
 	if err := s.Store.DeleteFriendship(c.Request.Context(), source.ID, targetID); err != nil {
 		Fail(c, http.StatusInternalServerError, "failed to delete friendship")
 		return
 	}
-	OK(c, http.StatusOK, gin.H{"entity_id": source.ID, "removed_friend_id": targetID})
+	OK(c, http.StatusOK, gin.H{"entity_id": source.ID, "public_id": source.PublicID, "removed_friend_id": targetID, "removed_friend_public_id": targetEntity.PublicID})
 }
 
 func normalizeDiscoverability(entity *model.Entity) {

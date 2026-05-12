@@ -51,11 +51,13 @@ func (s *Server) broadcastSystemMessage(c *gin.Context, convID, senderID int64, 
 }
 
 type createConversationRequest struct {
-	SourceEntityID int64   `json:"source_entity_id"`
-	Title          string  `json:"title"`
-	Description    string  `json:"description"`
-	ConvType       string  `json:"conv_type"`
-	ParticipantIDs []int64 `json:"participant_ids"`
+	SourceEntityID       int64    `json:"source_entity_id"`
+	SourcePublicID       string   `json:"source_public_id"`
+	Title                string   `json:"title"`
+	Description          string   `json:"description"`
+	ConvType             string   `json:"conv_type"`
+	ParticipantIDs       []int64  `json:"participant_ids"`
+	ParticipantPublicIDs []string `json:"participant_public_ids"`
 }
 
 func generateConversationID() int64 {
@@ -97,20 +99,33 @@ func (s *Server) HandleCreateConversation(c *gin.Context) {
 		convType = model.ConvChannel
 	}
 
-	initiator, ok := s.resolveActingEntity(c, req.SourceEntityID)
+	sourceEntity, ok := s.resolveEntityPublicIDInput(c, req.SourceEntityID, req.SourcePublicID, "source")
+	if !ok {
+		return
+	}
+	sourceID := req.SourceEntityID
+	if sourceEntity != nil {
+		sourceID = sourceEntity.ID
+	}
+	initiator, ok := s.resolveActingEntity(c, sourceID)
 	if !ok {
 		return
 	}
 	normalizeDiscoverability(initiator)
 	normalizeInteractionPolicies(initiator)
 
+	participantIDs, ok := s.resolvePublicIDsInput(c, req.ParticipantIDs, req.ParticipantPublicIDs, "participant")
+	if !ok {
+		return
+	}
+
 	if convType == model.ConvDirect {
-		if len(req.ParticipantIDs) > 1 {
+		if len(participantIDs) > 1 {
 			FailWithCode(c, http.StatusBadRequest, ErrCodeValidationField, "direct conversations require exactly one participant")
 			return
 		}
-		if len(req.ParticipantIDs) == 1 {
-			target, err := s.Store.GetEntityByID(ctx, req.ParticipantIDs[0])
+		if len(participantIDs) == 1 {
+			target, err := s.Store.GetEntityByID(ctx, participantIDs[0])
 			if err != nil || target == nil {
 				FailWithCode(c, http.StatusNotFound, ErrCodeEntityNotFound, "target entity not found")
 				return
@@ -163,7 +178,7 @@ func (s *Server) HandleCreateConversation(c *gin.Context) {
 
 	// Add additional participants
 	participantEntityIDs := []int64{initiator.ID}
-	for _, pid := range req.ParticipantIDs {
+	for _, pid := range participantIDs {
 		if pid == initiator.ID {
 			continue
 		}
@@ -189,6 +204,7 @@ func (s *Server) HandleCreateConversation(c *gin.Context) {
 		Fail(c, http.StatusInternalServerError, "failed to reload conversation")
 		return
 	}
+	s.attachConversationIdentity(ctx, conv)
 
 	OK(c, http.StatusCreated, conv)
 }
@@ -208,6 +224,7 @@ func (s *Server) HandleListConversations(c *gin.Context) {
 		Fail(c, http.StatusInternalServerError, "failed to list conversations")
 		return
 	}
+	s.attachConversationsIdentity(ctx, convs)
 
 	// Enrich with unread counts
 	counts, _ := s.Store.GetUnreadCounts(ctx, entityID)
@@ -227,6 +244,7 @@ func (s *Server) HandleListConversations(c *gin.Context) {
 	for i, conv := range convs {
 		if conv != nil {
 			conv.LastMessage = latestMessages[conv.ID]
+			s.attachConversationIdentity(ctx, conv)
 		}
 		result[i] = convWithUnread{Conversation: conv, UnreadCount: counts[conv.ID]}
 	}
@@ -324,6 +342,7 @@ func (s *Server) HandleGetConversationByPublicID(c *gin.Context) {
 		return
 	}
 
+	s.attachConversationIdentity(ctx, conv)
 	OK(c, http.StatusOK, conv)
 }
 
@@ -342,11 +361,12 @@ func (s *Server) HandleAddParticipant(c *gin.Context) {
 	}
 
 	var req struct {
-		EntityID int64  `json:"entity_id" binding:"required"`
-		Role     string `json:"role"`
+		EntityID       int64  `json:"entity_id"`
+		EntityPublicID string `json:"entity_public_id"`
+		Role           string `json:"role"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, "entity_id is required")
+		Fail(c, http.StatusBadRequest, "entity_id or entity_public_id is required")
 		return
 	}
 
@@ -360,9 +380,12 @@ func (s *Server) HandleAddParticipant(c *gin.Context) {
 		return
 	}
 
-	target, err := s.Store.GetEntityByID(ctx, req.EntityID)
-	if err != nil || target == nil {
-		Fail(c, http.StatusNotFound, "entity not found")
+	target, ok := s.resolveEntityPublicIDInput(c, req.EntityID, req.EntityPublicID, "participant")
+	if !ok {
+		return
+	}
+	if target == nil {
+		FailWithCode(c, http.StatusBadRequest, ErrCodeValidationField, "entity_id or entity_public_id is required")
 		return
 	}
 
@@ -397,7 +420,7 @@ func (s *Server) HandleAddParticipant(c *gin.Context) {
 
 	if err := s.Store.AddParticipant(ctx, &model.Participant{
 		ConversationID: convID,
-		EntityID:       req.EntityID,
+		EntityID:       target.ID,
 		Role:           role,
 	}); err != nil {
 		Fail(c, http.StatusInternalServerError, "failed to add participant")
@@ -406,8 +429,8 @@ func (s *Server) HandleAddParticipant(c *gin.Context) {
 
 	// Subscribe entity to WS and broadcast
 	if s.Hub != nil {
-		s.Hub.SubscribeEntity(convID, req.EntityID)
-		s.Hub.NotifyNewConversation(convID, req.EntityID)
+		s.Hub.SubscribeEntity(convID, target.ID)
+		s.Hub.NotifyNewConversation(convID, target.ID)
 	}
 
 	// System message
@@ -418,9 +441,10 @@ func (s *Server) HandleAddParticipant(c *gin.Context) {
 	// Broadcast conversation update
 	if s.Hub != nil {
 		s.Hub.BroadcastEvent(convID, "conversation.updated", map[string]interface{}{
-			"conversation_id": convID,
-			"action":          "member_added",
-			"entity_id":       req.EntityID,
+			"conversation_id":  convID,
+			"action":           "member_added",
+			"entity_id":        target.ID,
+			"entity_public_id": target.PublicID,
 		})
 	}
 

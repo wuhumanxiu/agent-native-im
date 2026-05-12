@@ -25,6 +25,12 @@ for (const field of manifest.requiredSendFields) {
   }
 }
 
+for (const field of manifest.requiredPublicIdFields ?? []) {
+  if (!openapi.includes(field) && !wsSchemaTextIncludes(field)) {
+    failures.push(`protocol missing required public_id field: ${field}`);
+  }
+}
+
 const eventEnum = wsSchema?.properties?.type?.enum ?? [];
 for (const eventName of manifest.requiredWebSocketEvents) {
   if (!eventEnum.includes(eventName)) {

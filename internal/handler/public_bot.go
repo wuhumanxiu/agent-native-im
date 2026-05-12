@@ -12,9 +12,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"github.com/wzfukui/agent-native-im/internal/auth"
 	"github.com/wzfukui/agent-native-im/internal/model"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const publicVisitorTokenTTL = 12 * time.Hour
@@ -177,13 +177,13 @@ func (s *Server) createPublicVisitorSession(c *gin.Context, bot *model.Entity, a
 		"access_code":    strings.TrimSpace(accessCode),
 	})
 	visitor := &model.Entity{
-		PublicID:       uuid.NewString(),
-		EntityType:     model.EntityService,
-		Name:           visitorName,
-		DisplayName:    displayName,
-		Status:         "active",
+		PublicID:        uuid.NewString(),
+		EntityType:      model.EntityService,
+		Name:            visitorName,
+		DisplayName:     displayName,
+		Status:          "active",
 		Discoverability: "private",
-		Metadata:       meta,
+		Metadata:        meta,
 	}
 	if err := s.Store.CreateEntity(ctx, visitor); err != nil {
 		return nil, nil, "", err

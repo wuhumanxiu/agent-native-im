@@ -191,11 +191,65 @@ components:
         sender_id:
           type: integer
           format: int64
+        sender:
+          $ref: '#/components/schemas/Entity'
+        mentions:
+          type: array
+          items:
+            type: integer
+            format: int64
+          description: Legacy internal entity IDs.
+        mention_public_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Preferred public UUID mention references.
         layers:
           $ref: '#/components/schemas/MessageLayers'
         created_at:
           type: string
           format: date-time
+
+    Participant:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        conversation_id:
+          type: integer
+          format: int64
+        entity_id:
+          type: integer
+          format: int64
+          description: Legacy internal entity ID.
+        entity_public_id:
+          type: string
+          format: uuid
+          description: Preferred participant entity public UUID.
+        entity:
+          $ref: '#/components/schemas/Entity'
+
+    ReactionSummary:
+      type: object
+      properties:
+        emoji:
+          type: string
+        count:
+          type: integer
+        entity_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+          description: Legacy internal reacting entity IDs.
+        public_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Preferred reacting entity public UUIDs.
 
 paths:
   /api/v1/ping:
@@ -362,15 +416,41 @@ paths:
           application/json:
             schema:
               type: object
-              required: [bot_id]
               properties:
-                bot_id:
+                source_entity_id:
                   type: integer
                   format: int64
+                  deprecated: true
+                  description: Legacy acting entity ID.
+                source_public_id:
+                  type: string
+                  format: uuid
+                  description: Preferred acting entity public UUID.
+                participant_ids:
+                  type: array
+                  deprecated: true
+                  items:
+                    type: integer
+                    format: int64
+                  description: Legacy participant entity IDs.
+                participant_public_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: Preferred participant public UUIDs.
+                conv_type:
+                  type: string
+                  enum: [direct, group, channel]
                 title:
                   type: string
+                description:
+                  type: string
             example:
-              bot_id: 1
+              source_public_id: 419407cb-97a4-4d0f-a233-91ffc681d001
+              participant_public_ids:
+                - d290f1ee-6c54-4b01-90e6-d701748f0851
+              conv_type: direct
               title: Write blog post
       responses:
         '201':
@@ -478,6 +558,160 @@ paths:
                         summary: Write a blog post
                       created_at: "2026-02-28T10:05:00Z"
                   has_more: false
+
+  /api/v1/conversations/{id}/participants:
+    post:
+      summary: Add a participant
+      operationId: addParticipant
+      security:
+        - userAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                entity_id:
+                  type: integer
+                  format: int64
+                  deprecated: true
+                  description: Legacy internal entity ID.
+                entity_public_id:
+                  type: string
+                  format: uuid
+                  description: Preferred participant public UUID.
+                role:
+                  type: string
+                  enum: [member, admin, observer]
+      responses:
+        '201':
+          description: Participant added
+
+  /api/v1/friends:
+    get:
+      summary: List friends
+      operationId: listFriends
+      security:
+        - userAuth: []
+      parameters:
+        - name: entity_id
+          in: query
+          schema:
+            type: integer
+            deprecated: true
+          description: Legacy acting entity ID.
+        - name: public_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Preferred acting entity public UUID.
+      responses:
+        '200':
+          description: Friend entities
+
+  /api/v1/friends/requests:
+    get:
+      summary: List friend requests
+      operationId: listFriendRequests
+      security:
+        - userAuth: []
+      parameters:
+        - name: public_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Preferred acting entity public UUID.
+        - name: entity_id
+          in: query
+          schema:
+            type: integer
+            deprecated: true
+          description: Legacy acting entity ID.
+      responses:
+        '200':
+          description: Friend requests
+    post:
+      summary: Create friend request
+      operationId: createFriendRequest
+      security:
+        - userAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                source_public_id:
+                  type: string
+                  format: uuid
+                  description: Preferred acting entity public UUID.
+                target_public_id:
+                  type: string
+                  format: uuid
+                  description: Preferred friend target public UUID.
+                source_entity_id:
+                  type: integer
+                  format: int64
+                  deprecated: true
+                target_entity_id:
+                  type: integer
+                  format: int64
+                  deprecated: true
+                message:
+                  type: string
+      responses:
+        '201':
+          description: Friend request created
+
+  /api/v1/presence/batch:
+    post:
+      summary: Batch presence lookup
+      operationId: batchPresence
+      security:
+        - userAuth: []
+        - botAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                public_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: Preferred entity public UUIDs.
+                entity_ids:
+                  type: array
+                  deprecated: true
+                  items:
+                    type: integer
+                    format: int64
+                  description: Legacy internal entity IDs.
+      responses:
+        '200':
+          description: Presence maps keyed by legacy IDs and public UUIDs
+          content:
+            application/json:
+              example:
+                ok: true
+                data:
+                  presence:
+                    "1": true
+                  presence_by_public_id:
+                    419407cb-97a4-4d0f-a233-91ffc681d001: true
 
   /api/v1/messages/send:
     post:

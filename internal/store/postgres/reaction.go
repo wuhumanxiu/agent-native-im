@@ -32,13 +32,18 @@ func (s *PGStore) GetReactionsByMessages(ctx context.Context, messageIDs []int64
 		MessageID int64  `bun:"message_id"`
 		Emoji     string `bun:"emoji"`
 		EntityID  int64  `bun:"entity_id"`
+		PublicID  string `bun:"public_id"`
 	}
 
 	err := s.DB.NewSelect().
-		TableExpr("reactions").
-		Column("message_id", "emoji", "entity_id").
-		Where("message_id IN (?)", bun.In(messageIDs)).
-		OrderExpr("message_id, emoji, entity_id").
+		TableExpr("reactions AS r").
+		ColumnExpr("r.message_id").
+		ColumnExpr("r.emoji").
+		ColumnExpr("r.entity_id").
+		ColumnExpr("e.public_id").
+		Join("JOIN entities AS e ON e.id = r.entity_id").
+		Where("r.message_id IN (?)", bun.In(messageIDs)).
+		OrderExpr("r.message_id, r.emoji, r.entity_id").
 		Scan(ctx, &rows)
 	if err != nil {
 		return nil, err
@@ -57,13 +62,20 @@ func (s *PGStore) GetReactionsByMessages(ctx context.Context, messageIDs []int64
 		if i, ok := idx[k]; ok {
 			result[r.MessageID][i].Count++
 			result[r.MessageID][i].EntityIDs = append(result[r.MessageID][i].EntityIDs, r.EntityID)
+			if r.PublicID != "" {
+				result[r.MessageID][i].PublicIDs = append(result[r.MessageID][i].PublicIDs, r.PublicID)
+			}
 		} else {
 			idx[k] = len(result[r.MessageID])
-			result[r.MessageID] = append(result[r.MessageID], model.ReactionSummary{
+			summary := model.ReactionSummary{
 				Emoji:     r.Emoji,
 				Count:     1,
 				EntityIDs: []int64{r.EntityID},
-			})
+			}
+			if r.PublicID != "" {
+				summary.PublicIDs = []string{r.PublicID}
+			}
+			result[r.MessageID] = append(result[r.MessageID], summary)
 		}
 	}
 
