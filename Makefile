@@ -1,4 +1,4 @@
-.PHONY: run build test clean web protocol-check
+.PHONY: run build test clean web protocol-generate protocol-check
 
 APP_NAME := agent-native-im
 BUILD_DIR := bin
@@ -15,7 +15,11 @@ web:
 test:
 	go test ./...
 
+protocol-generate:
+	node scripts/generate-route-contract.mjs
+
 protocol-check:
+	node scripts/generate-route-contract.mjs --check
 	node scripts/check-protocol-contract.mjs
 
 clean:

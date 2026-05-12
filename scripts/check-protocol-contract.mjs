@@ -6,12 +6,16 @@ const protocolDir = path.join(root, "docs/protocol");
 const manifest = JSON.parse(fs.readFileSync(path.join(protocolDir, "manifest.json"), "utf8"));
 const openapi = fs.readFileSync(path.join(protocolDir, "openapi.yaml"), "utf8");
 const wsSchema = JSON.parse(fs.readFileSync(path.join(protocolDir, "ws-events.schema.json"), "utf8"));
+const routeContract = JSON.parse(fs.readFileSync(path.join(protocolDir, "routes.generated.json"), "utf8"));
 
 const failures = [];
 
 for (const requiredPath of manifest.requiredRestPaths) {
   if (!openapi.includes(requiredPath)) {
     failures.push(`openapi.yaml missing required path: ${requiredPath}`);
+  }
+  if (!routeContract.routes.some((route) => route.path === requiredPath)) {
+    failures.push(`routes.generated.json missing required path: ${requiredPath}`);
   }
 }
 
@@ -38,4 +42,3 @@ console.log(`ANI protocol contract ${manifest.version} OK`);
 function wsSchemaTextIncludes(text) {
   return JSON.stringify(wsSchema).includes(text);
 }
-

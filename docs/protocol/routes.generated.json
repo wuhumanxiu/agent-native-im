@@ -1,0 +1,458 @@
+{
+  "generatedFrom": "internal/handler/router.go",
+  "routeCount": 113,
+  "routes": [
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/users/{id}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/bot-access-links/{id}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/conversations/{id}/memories/{memId}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/conversations/{id}/participants/{entityId}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/entities/{id}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/friends/{entityId}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/invites/{id}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/me/devices/{deviceId}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/me/external-identities/{id}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/messages/{id}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/tasks/{taskId}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/webhooks/{id}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/audit-logs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/conversations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/stats"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/users"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/1pass/config"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bots/{id}/access-links"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/conversations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/conversations/{id}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/conversations/{id}/change-requests"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/conversations/{id}/invites"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/conversations/{id}/memories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/conversations/{id}/messages"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/conversations/{id}/search"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/conversations/{id}/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/conversations/by-public-id/{publicId}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/conversations/public/{publicId}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/entities"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/entities/{id}/credentials"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/entities/{id}/diagnostics"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/entities/{id}/self-check"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/entities/{id}/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/entities/discover"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/entities/search"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/feedback"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/feedback/{id}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/friends"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/friends/requests"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/health"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/inbox/snapshot"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/invite/{code}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me/auth-methods"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me/devices"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/messages/{id}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/messages/search"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/notifications"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/onboarding-guide"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ping"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/bots/{identifier}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/push/vapid-key"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/skill-template"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/{taskId}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/webhooks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ws"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/feedback/{id}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/reset-password"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/users"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/1pass/login"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/login"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/logout"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/refresh"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/register"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/bots/{id}/access-links"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations/{id}/archive"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations/{id}/change-requests"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations/{id}/change-requests/{reqId}/approve"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations/{id}/change-requests/{reqId}/reject"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations/{id}/invite"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations/{id}/leave"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations/{id}/memories"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations/{id}/participants"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations/{id}/pin"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations/{id}/progress"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations/{id}/read"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations/{id}/tasks"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations/{id}/typing"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations/{id}/unarchive"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/conversations/{id}/unpin"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/entities"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/entities/{id}/approve"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/entities/{id}/reactivate"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/entities/{id}/regenerate-token"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/feedback"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/feedback/{id}/comments"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/files/upload"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/friends/requests"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/friends/requests/{id}/accept"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/friends/requests/{id}/cancel"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/friends/requests/{id}/reject"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/invite/{code}/join"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/me/external-identities/1pass/link"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/messages/{id}/reactions"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/messages/{id}/respond"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/messages/send"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/notifications/{id}/read"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/notifications/read-all"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/presence/batch"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/public/bots/{identifier}/session"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/push/subscribe"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/push/unsubscribe"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/webhooks"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/users/{id}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/conversations/{id}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/conversations/{id}/subscription"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/entities/{id}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/me"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/me/password"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/messages/{id}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/tasks/{taskId}"
+    }
+  ]
+}
