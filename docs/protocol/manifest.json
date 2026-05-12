@@ -1,0 +1,49 @@
+{
+  "name": "ani-agent-protocol",
+  "version": "2026.5.12",
+  "serverUrl": "https://agent-native.im",
+  "apiBasePath": "/api/v1",
+  "webSocketPath": "/api/v1/ws",
+  "source": {
+    "repository": "https://github.com/wzfukui/agent-native-im",
+    "openapi": "docs/protocol/openapi.yaml",
+    "webSocketSchema": "docs/protocol/ws-events.schema.json"
+  },
+  "requiredRestPaths": [
+    "/api/v1/me",
+    "/api/v1/ws",
+    "/api/v1/messages/send",
+    "/api/v1/conversations",
+    "/api/v1/conversations/{id}/messages",
+    "/api/v1/conversations/by-public-id/{publicId}",
+    "/api/v1/files/upload"
+  ],
+  "requiredSendFields": [
+    "conversation_id",
+    "content_type",
+    "layers",
+    "attachments",
+    "mentions",
+    "mention_public_ids",
+    "reply_to"
+  ],
+  "requiredWebSocketEvents": [
+    "message.new",
+    "message.send",
+    "message.progress",
+    "stream.start",
+    "stream.delta",
+    "stream.end",
+    "stream.cancel",
+    "task.cancel",
+    "task.cancelled",
+    "friend.request.created",
+    "friend.request.updated",
+    "notification.new",
+    "notification.read",
+    "notification.read_all",
+    "pong",
+    "error"
+  ]
+}
+

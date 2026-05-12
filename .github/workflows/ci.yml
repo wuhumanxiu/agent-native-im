@@ -60,3 +60,6 @@ jobs:
         env:
           ADMIN_PASS: testadmin123
         run: go test ./...
+
+      - name: Check protocol contract
+        run: make protocol-check

@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-native.im/protocol/ws-events.schema.json",
+  "title": "ANI WebSocket Events",
+  "type": "object",
+  "required": ["type", "data"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "message.send",
+        "message.new",
+        "message.progress",
+        "stream.start",
+        "stream.delta",
+        "stream.end",
+        "stream.cancel",
+        "task.cancel",
+        "task.cancelled",
+        "typing",
+        "status.update",
+        "friend.request.created",
+        "friend.request.updated",
+        "notification.new",
+        "notification.read",
+        "notification.read_all",
+        "pong",
+        "error"
+      ]
+    },
+    "data": {
+      "oneOf": [
+        { "$ref": "#/$defs/messageSendPayload" },
+        { "$ref": "#/$defs/messagePayload" },
+        { "$ref": "#/$defs/errorPayload" },
+        { "type": "object" }
+      ]
+    }
+  },
+  "$defs": {
+    "messageLayers": {
+      "type": "object",
+      "properties": {
+        "thinking": { "type": "string" },
+        "status": {
+          "type": "object",
+          "properties": {
+            "phase": { "type": "string" },
+            "progress": { "type": "number", "minimum": 0, "maximum": 1 },
+            "text": { "type": "string" }
+          }
+        },
+        "data": { "type": "object" },
+        "summary": { "type": "string" },
+        "interaction": { "type": "object" }
+      }
+    },
+    "attachment": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "url": { "type": "string" },
+        "filename": { "type": "string" },
+        "mime_type": { "type": "string" },
+        "size": { "type": "integer" },
+        "content": { "type": "string" },
+        "language": { "type": "string" }
+      }
+    },
+    "messageSendPayload": {
+      "type": "object",
+      "required": ["conversation_id", "layers"],
+      "properties": {
+        "conversation_id": { "type": "integer" },
+        "stream_id": { "type": "string" },
+        "stream_type": { "type": "string", "enum": ["", "start", "delta", "end"] },
+        "content_type": {
+          "type": "string",
+          "enum": ["", "text", "markdown", "code", "image", "audio", "video", "file", "artifact", "system", "task_handover"]
+        },
+        "layers": { "$ref": "#/$defs/messageLayers" },
+        "attachments": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/attachment" }
+        },
+        "mentions": {
+          "type": "array",
+          "items": { "type": "integer" }
+        },
+        "mention_public_ids": {
+          "type": "array",
+          "items": { "type": "string", "format": "uuid" }
+        },
+        "reply_to": { "type": "integer" }
+      }
+    },
+    "messagePayload": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "conversation_id": { "type": "integer" },
+        "sender_id": { "type": "integer" },
+        "sender_type": { "type": "string" },
+        "content_type": { "type": "string" },
+        "layers": { "$ref": "#/$defs/messageLayers" },
+        "attachments": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/attachment" }
+        },
+        "mentions": {
+          "type": "array",
+          "items": { "type": "integer" }
+        },
+        "mention_public_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "reply_to": { "type": "integer" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "errorPayload": {
+      "type": "object",
+      "properties": {
+        "message": { "type": "string" },
+        "code": { "type": "string" }
+      }
+    }
+  }
+}
+

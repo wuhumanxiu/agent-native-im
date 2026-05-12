@@ -1,4 +1,4 @@
-.PHONY: run build test clean web
+.PHONY: run build test clean web protocol-check
 
 APP_NAME := agent-native-im
 BUILD_DIR := bin
@@ -14,6 +14,9 @@ web:
 
 test:
 	go test ./...
+
+protocol-check:
+	node scripts/check-protocol-contract.mjs
 
 clean:
 	rm -rf $(BUILD_DIR) data/*.db web/dist
