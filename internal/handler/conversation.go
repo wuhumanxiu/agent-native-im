@@ -397,16 +397,22 @@ func (s *Server) HandleAddParticipant(c *gin.Context) {
 			return
 		}
 		if conv.ConvType != model.ConvGroup && conv.ConvType != model.ConvChannel {
-			FailWithCode(c, http.StatusForbidden, ErrCodePermNotAdmin, "members can only add their own bots to group or channel conversations")
-			return
-		}
-		// Regular members can only add their own bots as regular members.
-		if target.EntityType != model.EntityBot || target.OwnerID == nil || *target.OwnerID != entityID {
-			FailWithCode(c, http.StatusForbidden, ErrCodePermNotAdmin, "only owner or admin can add other participants")
+			FailWithCode(c, http.StatusForbidden, ErrCodePermNotAdmin, "members can only add their own bots or friends to group or channel conversations")
 			return
 		}
 		if req.Role != "" && req.Role != "member" {
-			FailWithCode(c, http.StatusForbidden, ErrCodePermNotAdmin, "members can only add their own bots as members")
+			FailWithCode(c, http.StatusForbidden, ErrCodePermNotAdmin, "members can only add their own bots or friends as members")
+			return
+		}
+
+		ownsTargetBot := target.EntityType == model.EntityBot && target.OwnerID != nil && *target.OwnerID == entityID
+		isFriend := false
+		if !ownsTargetBot {
+			friendship, err := s.Store.GetFriendship(ctx, entityID, target.ID)
+			isFriend = err == nil && friendship != nil
+		}
+		if !ownsTargetBot && !isFriend {
+			FailWithCode(c, http.StatusForbidden, ErrCodePermNotAdmin, "members can only add their own bots or friends")
 			return
 		}
 	}

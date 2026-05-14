@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/wzfukui/agent-native-im/internal/handler"
@@ -191,12 +192,29 @@ func TestFileUpload_DisallowedType(t *testing.T) {
 	truncateAll(t)
 	token := seedAdmin(t)
 
-	disallowed := []string{"malware.exe", "script.bat", "noext"}
+	disallowed := []string{"malware.exe", "installer.msi", "noext"}
 	for _, filename := range disallowed {
 		t.Run(filename, func(t *testing.T) {
 			w := uploadFile(t, token, filename, "bad content", "")
 			assertStatus(t, w, http.StatusBadRequest)
 		})
+	}
+}
+
+func TestFileUploadAllowsHTMLAsDownloadOnly(t *testing.T) {
+	truncateAll(t)
+	token := seedAdmin(t)
+
+	storedName := uploadFileGetStoredName(t, token, "page.html", "<html><script>alert(1)</script></html>", "")
+	w := downloadFile(t, ptr(token), storedName)
+	assertStatus(t, w, http.StatusOK)
+
+	disposition := w.Header().Get("Content-Disposition")
+	if !strings.HasPrefix(disposition, "attachment;") {
+		t.Fatalf("expected html to be served as attachment, got %q", disposition)
+	}
+	if got := w.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Fatalf("expected nosniff header, got %q", got)
 	}
 }
 
@@ -374,15 +392,15 @@ func TestFileDownload_LegacyFile(t *testing.T) {
 	assertStatus(t, w, http.StatusForbidden)
 }
 
-func TestFileUpload_BlocksActiveContent(t *testing.T) {
+func TestFileUploadAllowsMostFileTypesAsAttachments(t *testing.T) {
 	truncateAll(t)
 	token := seedAdmin(t)
 
-	cases := []string{"page.html", "vector.svg", "feed.xml"}
+	cases := []string{"script.sh", "tool.js", "page.html", "vector.svg", "feed.xml", "config.unknownext"}
 	for _, filename := range cases {
 		t.Run(filename, func(t *testing.T) {
 			w := uploadFile(t, token, filename, "<html><script>alert(1)</script></html>", "")
-			assertStatus(t, w, http.StatusBadRequest)
+			assertStatus(t, w, http.StatusCreated)
 		})
 	}
 }
@@ -498,7 +516,7 @@ func TestFileUploadAllowedTypes(t *testing.T) {
 	truncateAll(t)
 	token := seedAdmin(t)
 
-	allowedFiles := []string{"photo.png", "doc.pdf", "data.json", "archive.zip"}
+	allowedFiles := []string{"photo.png", "doc.pdf", "data.json", "archive.zip", "script.py", "diagram.svg", "page.html"}
 	for _, filename := range allowedFiles {
 		t.Run(filename, func(t *testing.T) {
 			w := uploadFile(t, token, filename, "content", "")

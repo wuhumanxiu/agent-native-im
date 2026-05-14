@@ -474,6 +474,88 @@ func TestMemberCanAddOwnedBotToConversation(t *testing.T) {
 	assertStatus(t, resp, http.StatusCreated)
 }
 
+func TestMemberCanAddFriendToGroupConversation(t *testing.T) {
+	truncateAll(t)
+	adminToken := seedAdmin(t)
+
+	resp := doJSON(t, "POST", "/api/v1/admin/users", ptr(adminToken), map[string]string{
+		"username": "member-add-friend",
+		"password": "Memberpass1",
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	memberData := parseOK(t, resp)
+	memberID := int(memberData["id"].(float64))
+	memberToken := login(t, "member-add-friend", "Memberpass1")
+
+	resp = doJSON(t, "POST", "/api/v1/admin/users", ptr(adminToken), map[string]string{
+		"username": "friend-add-group",
+		"password": "Friendpass1",
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	friendData := parseOK(t, resp)
+	friendID := int(friendData["id"].(float64))
+	friendToken := login(t, "friend-add-group", "Friendpass1")
+
+	resp = doJSON(t, "POST", "/api/v1/friends/requests", ptr(memberToken), map[string]interface{}{
+		"target_entity_id": friendID,
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	friendReqID := int(parseOK(t, resp)["id"].(float64))
+
+	resp = doJSON(t, "POST", fmt.Sprintf("/api/v1/friends/requests/%d/accept", friendReqID), ptr(friendToken), nil)
+	assertStatus(t, resp, http.StatusOK)
+
+	resp = doJSON(t, "POST", "/api/v1/conversations", ptr(adminToken), map[string]interface{}{
+		"title":           "Friend Join",
+		"conv_type":       "group",
+		"participant_ids": []float64{float64(memberID)},
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	convData := parseOK(t, resp)
+	convID := int(convData["id"].(float64))
+
+	resp = doJSON(t, "POST", fmt.Sprintf("/api/v1/conversations/%d/participants", convID), ptr(memberToken), map[string]interface{}{
+		"entity_id": friendID,
+	})
+	assertStatus(t, resp, http.StatusCreated)
+}
+
+func TestMemberCannotAddNonFriendToGroupConversation(t *testing.T) {
+	truncateAll(t)
+	adminToken := seedAdmin(t)
+
+	resp := doJSON(t, "POST", "/api/v1/admin/users", ptr(adminToken), map[string]string{
+		"username": "member-add-nonfriend",
+		"password": "Memberpass1",
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	memberData := parseOK(t, resp)
+	memberID := int(memberData["id"].(float64))
+	memberToken := login(t, "member-add-nonfriend", "Memberpass1")
+
+	resp = doJSON(t, "POST", "/api/v1/admin/users", ptr(adminToken), map[string]string{
+		"username": "nonfriend-add-group",
+		"password": "Friendpass1",
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	nonFriendData := parseOK(t, resp)
+	nonFriendID := int(nonFriendData["id"].(float64))
+
+	resp = doJSON(t, "POST", "/api/v1/conversations", ptr(adminToken), map[string]interface{}{
+		"title":           "Non Friend Join",
+		"conv_type":       "group",
+		"participant_ids": []float64{float64(memberID)},
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	convData := parseOK(t, resp)
+	convID := int(convData["id"].(float64))
+
+	resp = doJSON(t, "POST", fmt.Sprintf("/api/v1/conversations/%d/participants", convID), ptr(memberToken), map[string]interface{}{
+		"entity_id": nonFriendID,
+	})
+	assertStatus(t, resp, http.StatusForbidden)
+}
+
 func TestMemberCannotAddOtherUsersBotToConversation(t *testing.T) {
 	truncateAll(t)
 	adminToken := seedAdmin(t)

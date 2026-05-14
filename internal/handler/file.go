@@ -19,87 +19,25 @@ import (
 
 const maxUploadSize = 32 << 20 // 32 MB
 
-// allowedMIMEPrefixes defines the MIME type prefixes accepted for upload.
-var allowedMIMEPrefixes = []string{
-	"image/",
-	"audio/",
-	"video/",
-}
-
-var allowedExactMIMEs = map[string]bool{
-	"text/plain":         true,
-	"text/markdown":      true,
-	"text/csv":           true,
-	"application/json":   true,
-	"application/pdf":    true,
-	"application/zip":    true,
-	"application/x-tar":  true,
-	"application/gzip":   true,
-	"application/msword": true,
-	"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
-	"application/vnd.ms-excel": true,
-	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         true,
-	"application/vnd.ms-powerpoint":                                             true,
-	"application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
-}
-
-var blockedActiveMIMEs = map[string]bool{
-	"text/html":             true,
-	"application/xhtml+xml": true,
-	"image/svg+xml":         true,
-	"text/xml":              true,
-	"application/xml":       true,
-}
-
 var blockedUploadExtensions = map[string]bool{
 	"":     true,
 	".apk": true,
 	".app": true,
-	".bat": true,
-	".cmd": true,
 	".com": true,
 	".cpl": true,
 	".dll": true,
 	".dmg": true,
 	".exe": true,
-	".hta": true,
 	".iso": true,
 	".jar": true,
-	".js":  true,
-	".jse": true,
 	".lnk": true,
 	".msi": true,
 	".pkg": true,
-	".ps1": true,
 	".scr": true,
-	".sh":  true,
-	".vb":  true,
-	".vbe": true,
-	".vbs": true,
-	".wsf": true,
 }
 
 func normalizeMIME(mimeType string) string {
 	return strings.TrimSpace(strings.Split(mimeType, ";")[0])
-}
-
-func isAllowedMIME(mimeType string) bool {
-	mimeType = normalizeMIME(mimeType)
-	if mimeType == "" || blockedActiveMIMEs[mimeType] {
-		return false
-	}
-	if allowedExactMIMEs[mimeType] {
-		return true
-	}
-	for _, prefix := range allowedMIMEPrefixes {
-		if strings.HasPrefix(mimeType, prefix) {
-			if mimeType == "image/svg+xml" {
-				return false
-			}
-			return true
-		}
-	}
-	return false
 }
 
 func detectUploadMIME(filename string, file multipart.File) (string, bool) {
@@ -115,13 +53,13 @@ func detectUploadMIME(filename string, file multipart.File) (string, bool) {
 	}
 	sniffed := normalizeMIME(http.DetectContentType(buf[:n]))
 
-	candidates := []string{extMime, sniffed}
-	for _, candidate := range candidates {
-		if isAllowedMIME(candidate) {
-			return candidate, true
-		}
+	if extMime != "" {
+		return extMime, true
 	}
-	return "", false
+	if sniffed != "" {
+		return sniffed, true
+	}
+	return "application/octet-stream", true
 }
 
 func shouldServeInline(mimeType string) bool {
@@ -309,6 +247,7 @@ func (s *Server) HandleFileDownload(c *gin.Context) {
 		}
 		c.Header("Content-Disposition", fmt.Sprintf(`%s; filename="%s"`, disposition, sanitizeFilename(record.OriginalName)))
 	}
+	c.Header("X-Content-Type-Options", "nosniff")
 	c.File(filePath)
 }
 
