@@ -1,6 +1,6 @@
 {
   "generatedFrom": "internal/handler/router.go",
-  "routeCount": 113,
+  "routeCount": 116,
   "routes": [
     {
       "method": "DELETE",
@@ -212,6 +212,14 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/releases"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/releases/latest"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/skill-template"
     },
     {
@@ -417,6 +425,10 @@
     {
       "method": "POST",
       "path": "/api/v1/push/unsubscribe"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/releases/{id}/read"
     },
     {
       "method": "POST",

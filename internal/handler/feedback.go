@@ -158,7 +158,12 @@ func (s *Server) HandleGetFeedback(c *gin.Context) {
 	if comments == nil {
 		comments = []*model.FeedbackComment{}
 	}
-	OK(c, http.StatusOK, gin.H{"item": item, "comments": comments, "admin": includeInternal})
+	links, err := s.Store.ListFeedbackReleaseLinks(c.Request.Context(), item.ID)
+	if err != nil {
+		Fail(c, http.StatusInternalServerError, "failed to list feedback releases")
+		return
+	}
+	OK(c, http.StatusOK, gin.H{"item": item, "comments": comments, "releases": links, "admin": includeInternal})
 }
 
 func (s *Server) HandleCreateFeedbackComment(c *gin.Context) {
@@ -214,10 +219,12 @@ func (s *Server) HandleAdminUpdateFeedback(c *gin.Context) {
 		return
 	}
 	var req struct {
-		Status   *string `json:"status"`
-		Priority *string `json:"priority"`
-		Severity *string `json:"severity"`
-		Type     *string `json:"type"`
+		Status            *string `json:"status"`
+		Priority          *string `json:"priority"`
+		Severity          *string `json:"severity"`
+		Type              *string `json:"type"`
+		FixedInReleaseIDs []int64 `json:"fixed_in_release_ids"`
+		RelatedReleaseIDs []int64 `json:"related_release_ids"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		Fail(c, http.StatusBadRequest, err.Error())
@@ -258,6 +265,18 @@ func (s *Server) HandleAdminUpdateFeedback(c *gin.Context) {
 	if err := s.Store.UpdateFeedbackItem(c.Request.Context(), item); err != nil {
 		Fail(c, http.StatusInternalServerError, "failed to update feedback")
 		return
+	}
+	if req.FixedInReleaseIDs != nil {
+		if err := s.Store.ReplaceFeedbackReleaseLinks(c.Request.Context(), item.ID, "fixed", req.FixedInReleaseIDs); err != nil {
+			Fail(c, http.StatusInternalServerError, "failed to link fixed release")
+			return
+		}
+	}
+	if req.RelatedReleaseIDs != nil {
+		if err := s.Store.ReplaceFeedbackReleaseLinks(c.Request.Context(), item.ID, "related", req.RelatedReleaseIDs); err != nil {
+			Fail(c, http.StatusInternalServerError, "failed to link related release")
+			return
+		}
 	}
 	updated, _ := s.Store.GetFeedbackItemByID(c.Request.Context(), item.ID)
 	if updated != nil {

@@ -24,6 +24,7 @@ type Store interface {
 	FriendStore
 	BotAccessStore
 	FeedbackStore
+	ReleaseStore
 	NotificationStore
 	TaskStore
 	MemoryStore
@@ -103,6 +104,17 @@ type FeedbackStore interface {
 	UpdateFeedbackItem(ctx context.Context, item *model.FeedbackItem) error
 	CreateFeedbackComment(ctx context.Context, comment *model.FeedbackComment) error
 	ListFeedbackComments(ctx context.Context, feedbackID int64, includeInternal bool) ([]*model.FeedbackComment, error)
+	ListFeedbackReleaseLinks(ctx context.Context, feedbackID int64) ([]*model.FeedbackReleaseLink, error)
+	ReplaceFeedbackReleaseLinks(ctx context.Context, feedbackID int64, linkType string, releaseIDs []int64) error
+}
+
+type ReleaseStore interface {
+	CreateRelease(ctx context.Context, release *model.Release) error
+	GetReleaseByID(ctx context.Context, id int64) (*model.Release, error)
+	ListReleases(ctx context.Context, filter model.ReleaseListFilter, readerEntityID int64) ([]*model.Release, int, error)
+	GetLatestRelease(ctx context.Context, channel string, readerEntityID int64) (*model.Release, error)
+	MarkReleaseRead(ctx context.Context, entityID, releaseID int64) error
+	CountUnreadReleases(ctx context.Context, entityID int64, channel string) (int, error)
 }
 
 type NotificationStore interface {

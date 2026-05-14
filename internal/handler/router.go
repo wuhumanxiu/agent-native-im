@@ -139,6 +139,9 @@ func NewRouter(s *Server) *gin.Engine {
 				full.GET("/feedback", s.HandleListFeedback)
 				full.GET("/feedback/:id", s.HandleGetFeedback)
 				full.POST("/feedback/:id/comments", s.HandleCreateFeedbackComment)
+				full.GET("/releases", s.HandleListReleases)
+				full.GET("/releases/latest", s.HandleLatestRelease)
+				full.POST("/releases/:id/read", s.HandleMarkReleaseRead)
 
 				// Webhook management
 				full.POST("/webhooks", s.HandleCreateWebhook)

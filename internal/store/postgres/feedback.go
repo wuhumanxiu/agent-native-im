@@ -95,3 +95,41 @@ func (s *PGStore) ListFeedbackComments(ctx context.Context, feedbackID int64, in
 	err := q.Scan(ctx)
 	return comments, err
 }
+
+func (s *PGStore) ListFeedbackReleaseLinks(ctx context.Context, feedbackID int64) ([]*model.FeedbackReleaseLink, error) {
+	var links []*model.FeedbackReleaseLink
+	err := s.DB.NewSelect().
+		Model(&links).
+		Relation("Release").
+		Where("feedback_release_link.feedback_id = ?", feedbackID).
+		OrderExpr("feedback_release_link.created_at ASC").
+		Scan(ctx)
+	return links, err
+}
+
+func (s *PGStore) ReplaceFeedbackReleaseLinks(ctx context.Context, feedbackID int64, linkType string, releaseIDs []int64) error {
+	return s.DB.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.NewDelete().
+			Model((*model.FeedbackReleaseLink)(nil)).
+			Where("feedback_id = ?", feedbackID).
+			Where("link_type = ?", linkType).
+			Exec(ctx); err != nil {
+			return err
+		}
+		if len(releaseIDs) == 0 {
+			return nil
+		}
+		links := make([]*model.FeedbackReleaseLink, 0, len(releaseIDs))
+		for _, releaseID := range releaseIDs {
+			if releaseID <= 0 {
+				continue
+			}
+			links = append(links, &model.FeedbackReleaseLink{FeedbackID: feedbackID, ReleaseID: releaseID, LinkType: linkType})
+		}
+		if len(links) == 0 {
+			return nil
+		}
+		_, err := tx.NewInsert().Model(&links).On("CONFLICT DO NOTHING").Exec(ctx)
+		return err
+	})
+}

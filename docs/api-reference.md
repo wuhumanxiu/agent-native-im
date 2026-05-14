@@ -1172,7 +1172,7 @@ Get one feedback item and visible comments.
 - **Scope**: Regular submitter or admin only
 - **Response** `200`:
   ```json
-  { "item": { "id": 1, "status": "open" }, "comments": [], "admin": false }
+  { "item": { "id": 1, "status": "open" }, "comments": [], "releases": [], "admin": false }
   ```
 
 ### POST /feedback/:id/comments
@@ -1198,9 +1198,70 @@ Update feedback triage fields.
 - **Auth**: Admin only
 - **Request body**:
   ```json
-  { "status": "triaged", "priority": "high", "severity": "high", "type": "bug" }
+  {
+    "status": "triaged",
+    "priority": "high",
+    "severity": "high",
+    "type": "bug",
+    "fixed_in_release_ids": [3],
+    "related_release_ids": [2]
+  }
   ```
 - **Response** `200`: Updated feedback item
+
+---
+
+## Releases
+
+### GET /releases
+
+List release notes for the current channel.
+
+- **Auth**: Required
+- **Query**: `channel` (`production` by default), `component`, `limit`, `offset`
+- **Response** `200`:
+  ```json
+  {
+    "releases": [
+      {
+        "id": 1,
+        "public_id": "a4cd8c77-e63e-4b3e-9379-9f9e7ef18c78",
+        "version": "2026.5.14",
+        "title": "Structured mention assignment and agent adapter updates",
+        "summary": "Release summary",
+        "component": "platform",
+        "platform": "all",
+        "channel": "production",
+        "sections": [{ "kind": "feature", "title": "New", "items": ["..."] }],
+        "required_actions": [{ "title": "Upgrade OpenClaw ANI plugin", "command": "npx -y @wzfukui/openclaw-ani-installer update", "required": true }],
+        "known_issues": [],
+        "is_read": false
+      }
+    ],
+    "unread_count": 1
+  }
+  ```
+
+### GET /releases/latest
+
+Get the newest release note for the current channel.
+
+- **Auth**: Required
+- **Query**: `channel` (`production` by default)
+- **Response** `200`:
+  ```json
+  { "release": { "id": 1, "version": "2026.5.14" }, "unread_count": 1 }
+  ```
+
+### POST /releases/:id/read
+
+Mark one release note as read for the current entity.
+
+- **Auth**: Required
+- **Response** `200`:
+  ```json
+  { "release_id": 1 }
+  ```
 
 ---
 
