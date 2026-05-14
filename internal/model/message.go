@@ -57,6 +57,14 @@ type Attachment struct {
 	Language string `json:"language,omitempty"`
 }
 
+type MentionRef struct {
+	PublicID    string `json:"public_id,omitempty"`
+	Handle      string `json:"handle,omitempty"`
+	DisplayName string `json:"display_name,omitempty"`
+	EntityType  string `json:"entity_type,omitempty"`
+	Text        string `json:"text,omitempty"`
+}
+
 type Message struct {
 	bun.BaseModel `bun:"table:messages"`
 
@@ -68,14 +76,19 @@ type Message struct {
 	Layers            MessageLayers `bun:"layers,type:jsonb" json:"layers"`
 	Attachments       []Attachment  `bun:"attachments,type:jsonb" json:"attachments,omitempty"`
 	Mentions          []int64       `bun:"mentions,type:jsonb,default:'[]'" json:"mentions,omitempty"`
+	MentionRefs       []MentionRef  `bun:"mention_refs,type:jsonb,default:'[]'" json:"mention_refs,omitempty"`
+	AssignedEntityIDs []int64       `bun:"assigned_entity_ids,type:jsonb,default:'[]'" json:"-"`
 	MentionPublicIDs  []string      `bun:"-" json:"mention_public_ids,omitempty"`
+	AssignedPublicIDs []string      `bun:"-" json:"assigned_public_ids"`
 	MentionedEntities []*Entity     `bun:"-" json:"mentioned_entities,omitempty"`
 	ReplyTo           *int64        `bun:"reply_to" json:"reply_to,omitempty"`
 	RevokedAt         *time.Time    `bun:"revoked_at" json:"revoked_at,omitempty"`
 	CreatedAt         time.Time     `bun:"created_at,nullzero,notnull,default:now()" json:"created_at"`
 
 	// Computed fields (populated by handler, not stored in DB)
-	SenderType string            `bun:"-" json:"sender_type,omitempty"`
-	Sender     *Entity           `bun:"-" json:"sender,omitempty"`
-	Reactions  []ReactionSummary `bun:"-" json:"reactions,omitempty"`
+	ConversationPublicID string            `bun:"-" json:"conversation_public_id,omitempty"`
+	SenderPublicID       string            `bun:"-" json:"sender_public_id,omitempty"`
+	SenderType           string            `bun:"-" json:"sender_type,omitempty"`
+	Sender               *Entity           `bun:"-" json:"sender,omitempty"`
+	Reactions            []ReactionSummary `bun:"-" json:"reactions,omitempty"`
 }

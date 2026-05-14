@@ -3,7 +3,9 @@ package ws
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -48,6 +50,20 @@ type Hub struct {
 }
 
 const recentlyOnlineWindow = 10 * time.Minute
+
+func conversationPublicID(conv *model.Conversation) string {
+	if conv == nil || len(conv.Metadata) == 0 {
+		return ""
+	}
+	var metadata map[string]any
+	if err := json.Unmarshal(conv.Metadata, &metadata); err != nil {
+		return ""
+	}
+	if raw, ok := metadata["public_id"].(string); ok {
+		return strings.TrimSpace(raw)
+	}
+	return ""
+}
 
 func NewHub(st store.Store) *Hub {
 	return &Hub{
@@ -491,6 +507,20 @@ func (h *Hub) copyConvClients(convID int64) []*Client {
 // BroadcastMessage sends a persisted message to all connected clients in the conversation,
 // respecting each participant's subscription mode.
 func (h *Hub) BroadcastMessage(msg *model.Message) {
+	ctx := context.Background()
+	if len(msg.Mentions) > 0 && len(msg.MentionPublicIDs) == 0 {
+		msg.MentionPublicIDs = mention.PublicIDsForEntityIDs(ctx, h.store, msg.Mentions)
+	}
+	if len(msg.Mentions) > 0 && len(msg.MentionRefs) == 0 {
+		msg.MentionRefs = mention.PublicRefsForEntityIDs(ctx, h.store, msg.Mentions)
+	}
+	if len(msg.AssignedEntityIDs) > 0 && len(msg.AssignedPublicIDs) == 0 {
+		msg.AssignedPublicIDs = mention.PublicIDsForEntityIDs(ctx, h.store, msg.AssignedEntityIDs)
+	}
+	if msg.AssignedPublicIDs == nil {
+		msg.AssignedPublicIDs = []string{}
+	}
+
 	payload := WSMessage{
 		Type: "message.new",
 		Data: msg,
@@ -500,10 +530,11 @@ func (h *Hub) BroadcastMessage(msg *model.Message) {
 		return
 	}
 
-	// Build mention set for quick lookup
-	mentionSet := make(map[int64]bool, len(msg.Mentions))
-	for _, eid := range msg.Mentions {
-		mentionSet[eid] = true
+	// Build assignment set for quick lookup. Mention refs are display/context;
+	// assigned IDs are the execution signal for bots/services.
+	assignmentSet := make(map[int64]bool, len(msg.AssignedEntityIDs))
+	for _, eid := range msg.AssignedEntityIDs {
+		assignmentSet[eid] = true
 	}
 
 	handoverAssignees := map[int64]bool{}
@@ -521,7 +552,6 @@ func (h *Hub) BroadcastMessage(msg *model.Message) {
 	}
 
 	// Load participant subscription modes, entity types, and context windows
-	ctx := context.Background()
 	conv, err := h.store.GetConversation(ctx, msg.ConversationID)
 	if err != nil {
 		slog.Error("ws: failed to load conversation", "conversation_id", msg.ConversationID, "error", err)
@@ -596,9 +626,9 @@ func (h *Hub) BroadcastMessage(msg *model.Message) {
 			case model.SubSubscribeAll:
 				shouldDeliver = true
 			case model.SubMentionOnly:
-				shouldDeliver = mentionSet[client.entityID]
+				shouldDeliver = assignmentSet[client.entityID]
 			case model.SubMentionWithCtx:
-				shouldDeliver = mentionSet[client.entityID]
+				shouldDeliver = assignmentSet[client.entityID]
 			case model.SubSubscribeDigest:
 				shouldDeliver = false // bot polls manually via REST
 			}
@@ -748,9 +778,15 @@ func (h *Hub) handleSend(client *Client, rawData []byte) {
 	}
 
 	payload := envelope.Data
+	ctx := context.Background()
+	conversationID, err := h.resolveConversationID(ctx, payload.ConversationID, payload.ConversationPublicID)
+	if err != nil {
+		client.sendError(err.Error())
+		return
+	}
+	payload.ConversationID = conversationID
 
 	// Verify participant and check observer role
-	ctx := context.Background()
 	ok, err := h.store.IsParticipant(ctx, payload.ConversationID, client.entityID)
 	if err != nil || !ok {
 		client.sendError("not a participant of this conversation")
@@ -778,21 +814,23 @@ func (h *Hub) handleSend(client *Client, rawData []byte) {
 	if contentType == "" {
 		contentType = model.ContentText
 	}
-	resolvedMentions, err := mention.ResolveEntityIDs(ctx, h.store, payload.ConversationID, payload.Mentions, payload.MentionPublicIDs)
+	resolvedMentions, err := mention.Resolve(ctx, h.store, payload.ConversationID, payload.Mentions, payload.MentionPublicIDs, payload.MentionRefs, payload.AssignedPublicIDs)
 	if err != nil {
 		client.sendError("mentioned entity is not a participant")
 		return
 	}
 
 	msg := &model.Message{
-		ConversationID: payload.ConversationID,
-		SenderID:       client.entityID,
-		StreamID:       payload.StreamID,
-		ContentType:    contentType,
-		Layers:         payload.Layers,
-		Attachments:    payload.Attachments,
-		Mentions:       resolvedMentions,
-		ReplyTo:        payload.ReplyTo,
+		ConversationID:    payload.ConversationID,
+		SenderID:          client.entityID,
+		StreamID:          payload.StreamID,
+		ContentType:       contentType,
+		Layers:            payload.Layers,
+		Attachments:       payload.Attachments,
+		Mentions:          resolvedMentions.EntityIDs,
+		MentionRefs:       resolvedMentions.MentionRefs,
+		AssignedEntityIDs: resolvedMentions.AssignedEntityIDs,
+		ReplyTo:           payload.ReplyTo,
 	}
 
 	if err := h.store.CreateMessage(ctx, msg); err != nil {
@@ -806,12 +844,45 @@ func (h *Hub) handleSend(client *Client, rawData []byte) {
 	sender, err := h.store.GetEntityByID(ctx, client.entityID)
 	if err == nil {
 		msg.SenderType = string(sender.EntityType)
+		msg.SenderPublicID = sender.PublicID
 		msg.Sender = sender
 	}
 	msg.MentionPublicIDs = mention.PublicIDsForEntityIDs(ctx, h.store, msg.Mentions)
+	msg.AssignedPublicIDs = mention.PublicIDsForEntityIDs(ctx, h.store, msg.AssignedEntityIDs)
+	if msg.AssignedPublicIDs == nil {
+		msg.AssignedPublicIDs = []string{}
+	}
+	if len(msg.MentionRefs) == 0 {
+		msg.MentionRefs = mention.PublicRefsForEntityIDs(ctx, h.store, msg.Mentions)
+	}
 	msg.MentionedEntities = mention.MentionedEntities(ctx, h.store, msg.Mentions)
+	if conv, err := h.store.GetConversation(ctx, msg.ConversationID); err == nil {
+		msg.ConversationPublicID = conversationPublicID(conv)
+	}
 
 	h.BroadcastMessage(msg)
+}
+
+func (h *Hub) resolveConversationID(ctx context.Context, numericID int64, publicID string) (int64, error) {
+	publicID = strings.TrimSpace(publicID)
+	var byPublic *model.Conversation
+	if publicID != "" {
+		conv, err := h.store.GetConversationByPublicID(ctx, publicID)
+		if err != nil || conv == nil {
+			return 0, errors.New("conversation_public_id not found")
+		}
+		byPublic = conv
+	}
+	if numericID > 0 {
+		if byPublic != nil && byPublic.ID != numericID {
+			return 0, errors.New("conversation_id conflicts with conversation_public_id")
+		}
+		return numericID, nil
+	}
+	if byPublic != nil {
+		return byPublic.ID, nil
+	}
+	return 0, errors.New("conversation_id or conversation_public_id is required")
 }
 
 // Long polling support

@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -49,30 +50,89 @@ func (s *Server) populateSenders(ctx context.Context, msgs []*model.Message) {
 	for _, msg := range msgs {
 		if sender, ok := entityMap[msg.SenderID]; ok {
 			msg.SenderType = string(sender.EntityType)
+			msg.SenderPublicID = sender.PublicID
 			msg.Sender = sender
 		}
 	}
 }
 
+func (s *Server) populateConversationPublicIDs(ctx context.Context, msgs []*model.Message) {
+	if len(msgs) == 0 {
+		return
+	}
+	cache := map[int64]string{}
+	for _, msg := range msgs {
+		if msg == nil || msg.ConversationID == 0 {
+			continue
+		}
+		if publicID, ok := cache[msg.ConversationID]; ok {
+			msg.ConversationPublicID = publicID
+			continue
+		}
+		conv, err := s.Store.GetConversation(ctx, msg.ConversationID)
+		if err != nil || conv == nil {
+			continue
+		}
+		publicID := conversationPublicID(conv)
+		cache[msg.ConversationID] = publicID
+		msg.ConversationPublicID = publicID
+	}
+}
+
 type sendMessageRequest struct {
-	ConversationID   int64               `json:"conversation_id" binding:"required"`
-	ContentType      string              `json:"content_type,omitempty"`
-	Layers           model.MessageLayers `json:"layers"`
-	Attachments      []model.Attachment  `json:"attachments,omitempty"`
-	StreamID         string              `json:"stream_id,omitempty"`
-	Mentions         []int64             `json:"mentions,omitempty"`
-	MentionPublicIDs []string            `json:"mention_public_ids,omitempty"`
-	ReplyTo          *int64              `json:"reply_to,omitempty"`
+	ConversationID       int64               `json:"conversation_id"`
+	ConversationPublicID string              `json:"conversation_public_id,omitempty"`
+	ContentType          string              `json:"content_type,omitempty"`
+	Layers               model.MessageLayers `json:"layers"`
+	Attachments          []model.Attachment  `json:"attachments,omitempty"`
+	StreamID             string              `json:"stream_id,omitempty"`
+	Mentions             []int64             `json:"mentions,omitempty"`
+	MentionPublicIDs     []string            `json:"mention_public_ids,omitempty"`
+	MentionRefs          []model.MentionRef  `json:"mention_refs,omitempty"`
+	AssignedPublicIDs    *[]string           `json:"assigned_public_ids,omitempty"`
+	ReplyTo              *int64              `json:"reply_to,omitempty"`
 }
 
 func (s *Server) populateMentionPublicRefs(ctx context.Context, msgs []*model.Message) {
 	for _, msg := range msgs {
-		if msg == nil || len(msg.Mentions) == 0 {
+		if msg == nil {
 			continue
 		}
-		msg.MentionPublicIDs = mention.PublicIDsForEntityIDs(ctx, s.Store, msg.Mentions)
-		msg.MentionedEntities = mention.MentionedEntities(ctx, s.Store, msg.Mentions)
+		if len(msg.Mentions) > 0 {
+			msg.MentionPublicIDs = mention.PublicIDsForEntityIDs(ctx, s.Store, msg.Mentions)
+			msg.MentionedEntities = mention.MentionedEntities(ctx, s.Store, msg.Mentions)
+			if len(msg.MentionRefs) == 0 {
+				msg.MentionRefs = mention.PublicRefsForEntityIDs(ctx, s.Store, msg.Mentions)
+			}
+		}
+		if len(msg.AssignedEntityIDs) > 0 {
+			msg.AssignedPublicIDs = mention.PublicIDsForEntityIDs(ctx, s.Store, msg.AssignedEntityIDs)
+		} else if msg.AssignedPublicIDs == nil {
+			msg.AssignedPublicIDs = []string{}
+		}
 	}
+}
+
+func (s *Server) resolveMessageConversationID(ctx context.Context, numericID int64, publicID string) (int64, error) {
+	publicID = strings.TrimSpace(publicID)
+	var publicConv *model.Conversation
+	if publicID != "" {
+		conv, err := s.Store.GetConversationByPublicID(ctx, publicID)
+		if err != nil || conv == nil {
+			return 0, errors.New("conversation_public_id not found")
+		}
+		publicConv = conv
+	}
+	if numericID > 0 {
+		if publicConv != nil && publicConv.ID != numericID {
+			return 0, errors.New("conversation_id conflicts with conversation_public_id")
+		}
+		return numericID, nil
+	}
+	if publicConv != nil {
+		return publicConv.ID, nil
+	}
+	return 0, errors.New("conversation_id or conversation_public_id is required")
 }
 
 func attachmentStoredName(raw string) string {
@@ -113,6 +173,7 @@ func (s *Server) HandleGetMessage(c *gin.Context) {
 	}
 
 	s.populateSenders(ctx, []*model.Message{msg})
+	s.populateConversationPublicIDs(ctx, []*model.Message{msg})
 	s.populateMentionPublicRefs(ctx, []*model.Message{msg})
 	OK(c, http.StatusOK, msg)
 }
@@ -126,14 +187,19 @@ func (s *Server) HandleSendMessage(c *gin.Context) {
 
 	entityID := auth.GetEntityID(c)
 	ctx := c.Request.Context()
+	conversationID, err := s.resolveMessageConversationID(ctx, req.ConversationID, req.ConversationPublicID)
+	if err != nil {
+		FailWithCode(c, http.StatusBadRequest, ErrCodeValidationField, err.Error())
+		return
+	}
 
 	// Verify participant and check observer role
-	ok, err := s.Store.IsParticipant(ctx, req.ConversationID, entityID)
+	ok, err := s.Store.IsParticipant(ctx, conversationID, entityID)
 	if err != nil || !ok {
 		FailWithCode(c, http.StatusForbidden, ErrCodePermNotParticipant, "not a participant of this conversation")
 		return
 	}
-	participant, err := s.Store.GetParticipant(ctx, req.ConversationID, entityID)
+	participant, err := s.Store.GetParticipant(ctx, conversationID, entityID)
 	if err == nil && participant != nil && participant.Role == model.RoleObserver {
 		FailWithCode(c, http.StatusForbidden, ErrCodePermObserver, "observers cannot send messages")
 		return
@@ -141,7 +207,7 @@ func (s *Server) HandleSendMessage(c *gin.Context) {
 
 	// Resolve public UUID mentions into internal IDs and validate all mentions
 	// against the current participant set.
-	resolvedMentions, err := mention.ResolveEntityIDs(ctx, s.Store, req.ConversationID, req.Mentions, req.MentionPublicIDs)
+	resolvedMentions, err := mention.Resolve(ctx, s.Store, conversationID, req.Mentions, req.MentionPublicIDs, req.MentionRefs, req.AssignedPublicIDs)
 	if err != nil {
 		Fail(c, http.StatusBadRequest, "mentioned entity is not a participant")
 		return
@@ -163,7 +229,7 @@ func (s *Server) HandleSendMessage(c *gin.Context) {
 			return
 		}
 		if record.ConversationID != nil {
-			if *record.ConversationID != req.ConversationID {
+			if *record.ConversationID != conversationID {
 				Fail(c, http.StatusBadRequest, "attachment file belongs to a different conversation")
 				return
 			}
@@ -173,21 +239,23 @@ func (s *Server) HandleSendMessage(c *gin.Context) {
 			Fail(c, http.StatusBadRequest, "attachment file is not owned by sender")
 			return
 		}
-		if err := s.Store.BindFileRecordToConversation(ctx, storedName, entityID, req.ConversationID); err != nil {
+		if err := s.Store.BindFileRecordToConversation(ctx, storedName, entityID, conversationID); err != nil {
 			Fail(c, http.StatusInternalServerError, "failed to bind attachment to conversation")
 			return
 		}
 	}
 
 	msg := &model.Message{
-		ConversationID: req.ConversationID,
-		SenderID:       entityID,
-		StreamID:       req.StreamID,
-		ContentType:    contentType,
-		Layers:         req.Layers,
-		Attachments:    req.Attachments,
-		Mentions:       resolvedMentions,
-		ReplyTo:        req.ReplyTo,
+		ConversationID:    conversationID,
+		SenderID:          entityID,
+		StreamID:          req.StreamID,
+		ContentType:       contentType,
+		Layers:            req.Layers,
+		Attachments:       req.Attachments,
+		Mentions:          resolvedMentions.EntityIDs,
+		MentionRefs:       resolvedMentions.MentionRefs,
+		AssignedEntityIDs: resolvedMentions.AssignedEntityIDs,
+		ReplyTo:           req.ReplyTo,
 	}
 
 	if err := s.Store.CreateMessage(ctx, msg); err != nil {
@@ -195,14 +263,16 @@ func (s *Server) HandleSendMessage(c *gin.Context) {
 		return
 	}
 
-	_ = s.Store.TouchConversation(ctx, req.ConversationID)
+	_ = s.Store.TouchConversation(ctx, conversationID)
 
 	// Populate sender info
 	sender, err := s.Store.GetEntityByID(ctx, entityID)
 	if err == nil && sender != nil {
 		msg.SenderType = string(sender.EntityType)
+		msg.SenderPublicID = sender.PublicID
 		msg.Sender = sender
 	}
+	s.populateConversationPublicIDs(ctx, []*model.Message{msg})
 	s.populateMentionPublicRefs(ctx, []*model.Message{msg})
 
 	// Broadcast via WebSocket
@@ -311,6 +381,9 @@ func (s *Server) HandleSearchMessages(c *gin.Context) {
 	if msgs == nil {
 		msgs = []*model.Message{}
 	}
+	s.populateSenders(ctx, msgs)
+	s.populateConversationPublicIDs(ctx, msgs)
+	s.populateMentionPublicRefs(ctx, msgs)
 
 	OK(c, http.StatusOK, gin.H{
 		"messages": msgs,
@@ -552,6 +625,7 @@ func (s *Server) HandleListMessages(c *gin.Context) {
 
 	// Populate sender info for each message (batch)
 	s.populateSenders(ctx, msgs)
+	s.populateConversationPublicIDs(ctx, msgs)
 	s.populateMentionPublicRefs(ctx, msgs)
 
 	// Populate reactions
@@ -615,6 +689,7 @@ func (s *Server) HandleGlobalSearchMessages(c *gin.Context) {
 
 	// Populate sender info (batch)
 	s.populateSenders(ctx, msgs)
+	s.populateConversationPublicIDs(ctx, msgs)
 	s.populateMentionPublicRefs(ctx, msgs)
 
 	// Enrich results with conversation title

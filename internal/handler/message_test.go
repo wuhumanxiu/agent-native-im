@@ -209,6 +209,147 @@ func TestSendMessageWithMentionPublicIDs(t *testing.T) {
 	}
 }
 
+func TestSendMessageWithMentionRefsAssignmentsAndConversationPublicID(t *testing.T) {
+	truncateAll(t)
+	token := seedAdmin(t)
+
+	resp := doJSON(t, "POST", "/api/v1/entities", ptr(token), map[string]interface{}{
+		"name":         "zhangsanfeng",
+		"bot_id":       "bot_zhangsanfeng",
+		"display_name": "张三丰",
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	zsfEntity := parseOK(t, resp)["entity"].(map[string]interface{})
+	zsfID := zsfEntity["id"].(float64)
+	zsfPublicID := zsfEntity["public_id"].(string)
+
+	resp = doJSON(t, "POST", "/api/v1/entities", ptr(token), map[string]interface{}{
+		"name":         "alice",
+		"bot_id":       "bot_alice",
+		"display_name": "Alice",
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	aliceEntity := parseOK(t, resp)["entity"].(map[string]interface{})
+	aliceID := aliceEntity["id"].(float64)
+	alicePublicID := aliceEntity["public_id"].(string)
+
+	resp = doJSON(t, "POST", "/api/v1/conversations", ptr(token), map[string]interface{}{
+		"title":           "Assignment Test",
+		"conv_type":       "group",
+		"participant_ids": []float64{zsfID, aliceID},
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	convData := parseOK(t, resp)
+	convMetadata := convData["metadata"].(map[string]interface{})
+	convPublicID := convMetadata["public_id"].(string)
+
+	resp = doJSON(t, "POST", "/api/v1/messages/send", ptr(token), map[string]interface{}{
+		"conversation_public_id": convPublicID,
+		"content_type":           "text",
+		"layers":                 map[string]string{"summary": "@zhangsanfeng report your IP to @alice"},
+		"mention_refs": []map[string]string{
+			{"handle": "bot_zhangsanfeng", "text": "@zhangsanfeng"},
+			{"public_id": alicePublicID, "handle": "bot_alice", "text": "@alice"},
+		},
+		"assigned_public_ids": []string{alicePublicID},
+	})
+	assertStatus(t, resp, http.StatusCreated)
+
+	data := parseOK(t, resp)
+	if data["conversation_public_id"] != convPublicID {
+		t.Fatalf("expected conversation_public_id %s, got %v", convPublicID, data["conversation_public_id"])
+	}
+	mentionPublicIDs := data["mention_public_ids"].([]interface{})
+	if len(mentionPublicIDs) != 2 {
+		t.Fatalf("expected two mention_public_ids, got %v", data["mention_public_ids"])
+	}
+	assignedPublicIDs := data["assigned_public_ids"].([]interface{})
+	if len(assignedPublicIDs) != 1 || assignedPublicIDs[0] != alicePublicID {
+		t.Fatalf("expected assigned_public_ids [%s], got %v", alicePublicID, data["assigned_public_ids"])
+	}
+	mentionRefs := data["mention_refs"].([]interface{})
+	if len(mentionRefs) != 2 {
+		t.Fatalf("expected two mention_refs, got %v", data["mention_refs"])
+	}
+	firstRef := mentionRefs[0].(map[string]interface{})
+	if firstRef["public_id"] != zsfPublicID || firstRef["handle"] != "bot_zhangsanfeng" {
+		t.Fatalf("expected normalized first mention ref, got %v", firstRef)
+	}
+}
+
+func TestSendMessageRejectsAssignedPublicIDOutsideMentionRefs(t *testing.T) {
+	truncateAll(t)
+	token := seedAdmin(t)
+
+	resp := doJSON(t, "POST", "/api/v1/entities", ptr(token), map[string]interface{}{
+		"name":   "mentioned",
+		"bot_id": "bot_mentioned",
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	mentioned := parseOK(t, resp)["entity"].(map[string]interface{})
+
+	resp = doJSON(t, "POST", "/api/v1/entities", ptr(token), map[string]interface{}{
+		"name":   "assigned-only",
+		"bot_id": "bot_assigned_only",
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	assignedOnly := parseOK(t, resp)["entity"].(map[string]interface{})
+
+	resp = doJSON(t, "POST", "/api/v1/conversations", ptr(token), map[string]interface{}{
+		"title":           "Assignment Reject Test",
+		"conv_type":       "group",
+		"participant_ids": []float64{mentioned["id"].(float64), assignedOnly["id"].(float64)},
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	convID := int(parseOK(t, resp)["id"].(float64))
+
+	resp = doJSON(t, "POST", "/api/v1/messages/send", ptr(token), map[string]interface{}{
+		"conversation_id":     convID,
+		"layers":              map[string]string{"summary": "@mentioned only"},
+		"mention_public_ids":  []string{mentioned["public_id"].(string)},
+		"assigned_public_ids": []string{assignedOnly["public_id"].(string)},
+	})
+	assertStatus(t, resp, http.StatusBadRequest)
+}
+
+func TestSendMessageAllowsMentionOnlyWithEmptyAssignments(t *testing.T) {
+	truncateAll(t)
+	token := seedAdmin(t)
+
+	resp := doJSON(t, "POST", "/api/v1/entities", ptr(token), map[string]interface{}{
+		"name":   "mention-only",
+		"bot_id": "bot_mention_only",
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	bot := parseOK(t, resp)["entity"].(map[string]interface{})
+
+	resp = doJSON(t, "POST", "/api/v1/conversations", ptr(token), map[string]interface{}{
+		"title":           "Mention Only Test",
+		"conv_type":       "group",
+		"participant_ids": []float64{bot["id"].(float64)},
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	convID := int(parseOK(t, resp)["id"].(float64))
+
+	resp = doJSON(t, "POST", "/api/v1/messages/send", ptr(token), map[string]interface{}{
+		"conversation_id":     convID,
+		"layers":              map[string]string{"summary": "@mention-only FYI"},
+		"mention_public_ids":  []string{bot["public_id"].(string)},
+		"assigned_public_ids": []string{},
+	})
+	assertStatus(t, resp, http.StatusCreated)
+
+	data := parseOK(t, resp)
+	assignedPublicIDs := data["assigned_public_ids"].([]interface{})
+	if len(assignedPublicIDs) != 0 {
+		t.Fatalf("expected explicit empty assigned_public_ids, got %v", data["assigned_public_ids"])
+	}
+	mentionPublicIDs := data["mention_public_ids"].([]interface{})
+	if len(mentionPublicIDs) != 1 || mentionPublicIDs[0] != bot["public_id"].(string) {
+		t.Fatalf("expected mention_public_ids to remain, got %v", data["mention_public_ids"])
+	}
+}
+
 func TestSendMessageAllContentTypes(t *testing.T) {
 	truncateAll(t)
 	token := seedAdmin(t)

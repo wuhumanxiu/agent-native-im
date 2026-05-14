@@ -70,6 +70,9 @@ func TestMain(m *testing.M) {
 	if err := applyTestMigration(testStore, "000022_feedback.up.sql"); err != nil {
 		log.Fatalf("failed to apply test migration: %v", err)
 	}
+	if err := applyTestMigration(testStore, "000023_message_mention_assignments.up.sql"); err != nil {
+		log.Fatalf("failed to apply test migration: %v", err)
+	}
 	testHub = ws.NewHub(testStore)
 	go testHub.Run()
 

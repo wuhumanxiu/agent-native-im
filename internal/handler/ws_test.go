@@ -445,6 +445,81 @@ func TestHumanAlwaysReceivesGroupMessages(t *testing.T) {
 	}
 }
 
+func TestAssignedMentionsControlBotDelivery(t *testing.T) {
+	truncateAll(t)
+	token := seedAdmin(t)
+
+	resp := doJSON(t, "POST", "/api/v1/entities", ptr(token), map[string]string{"name": "assigned-bot"})
+	assertStatus(t, resp, http.StatusCreated)
+	assignedData := parseOK(t, resp)
+	assignedEntity := assignedData["entity"].(map[string]interface{})
+	assignedID := assignedEntity["id"].(float64)
+	assignedPublicID := assignedEntity["public_id"].(string)
+	assignedKey := assignedData["api_key"].(string)
+
+	resp = doJSON(t, "POST", "/api/v1/entities", ptr(token), map[string]string{"name": "notify-only-bot"})
+	assertStatus(t, resp, http.StatusCreated)
+	notifyData := parseOK(t, resp)
+	notifyEntity := notifyData["entity"].(map[string]interface{})
+	notifyID := notifyEntity["id"].(float64)
+	notifyPublicID := notifyEntity["public_id"].(string)
+	notifyKey := notifyData["api_key"].(string)
+
+	resp = doJSON(t, "POST", "/api/v1/conversations", ptr(token), map[string]interface{}{
+		"title":           "Assigned delivery",
+		"conv_type":       "group",
+		"participant_ids": []float64{assignedID, notifyID},
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	convData := parseOK(t, resp)
+	convID := int(convData["id"].(float64))
+
+	ts := newWSTestServer(t)
+	defer ts.Close()
+	wsURL := fmt.Sprintf("ws%s/api/v1/ws", ts.URL[len("http"):])
+
+	assignedConn, _, err := gorillaWs.DefaultDialer.Dial(wsURL, http.Header{"Authorization": []string{"Bearer " + assignedKey}})
+	if err != nil {
+		t.Fatalf("ws dial assigned bot: %v", err)
+	}
+	defer assignedConn.Close()
+	skipEntityConfig(t, assignedConn)
+
+	notifyConn, _, err := gorillaWs.DefaultDialer.Dial(wsURL, http.Header{"Authorization": []string{"Bearer " + notifyKey}})
+	if err != nil {
+		t.Fatalf("ws dial notify-only bot: %v", err)
+	}
+	defer notifyConn.Close()
+	skipEntityConfig(t, notifyConn)
+
+	resp = doJSON(t, "POST", "/api/v1/messages/send", ptr(token), map[string]interface{}{
+		"conversation_id":     convID,
+		"layers":              map[string]string{"summary": "@assigned-bot report to @notify-only-bot"},
+		"mention_public_ids":  []string{assignedPublicID, notifyPublicID},
+		"assigned_public_ids": []string{assignedPublicID},
+	})
+	assertStatus(t, resp, http.StatusCreated)
+
+	assignedMessages := readWSMessages(t, assignedConn, 4, 2*time.Second)
+	foundAssigned := false
+	for _, assignedMsg := range assignedMessages {
+		if assignedMsg["type"] == "message.new" {
+			foundAssigned = true
+			break
+		}
+	}
+	if !foundAssigned {
+		t.Fatalf("assigned bot should receive message.new, got %+v", assignedMessages)
+	}
+
+	notifyMessages := readWSMessages(t, notifyConn, 4, 300*time.Millisecond)
+	for _, notifyMsg := range notifyMessages {
+		if notifyMsg["type"] == "message.new" {
+			t.Fatalf("notify-only bot should not receive execution message, got %+v", notifyMsg)
+		}
+	}
+}
+
 func TestOwnerReceivesBotPresenceWithoutSharedConversation(t *testing.T) {
 	truncateAll(t)
 	token := seedAdmin(t)

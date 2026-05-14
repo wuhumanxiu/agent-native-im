@@ -67,11 +67,22 @@
         "language": { "type": "string" }
       }
     },
+    "mentionRef": {
+      "type": "object",
+      "properties": {
+        "public_id": { "type": "string", "format": "uuid" },
+        "handle": { "type": "string" },
+        "display_name": { "type": "string" },
+        "entity_type": { "type": "string", "enum": ["user", "bot", "service"] },
+        "text": { "type": "string" }
+      }
+    },
     "messageSendPayload": {
       "type": "object",
-      "required": ["conversation_id", "layers"],
+      "required": ["layers"],
       "properties": {
         "conversation_id": { "type": "integer" },
+        "conversation_public_id": { "type": "string", "format": "uuid" },
         "stream_id": { "type": "string" },
         "stream_type": { "type": "string", "enum": ["", "start", "delta", "end"] },
         "content_type": {
@@ -91,6 +102,14 @@
           "type": "array",
           "items": { "type": "string", "format": "uuid" }
         },
+        "mention_refs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/mentionRef" }
+        },
+        "assigned_public_ids": {
+          "type": "array",
+          "items": { "type": "string", "format": "uuid" }
+        },
         "reply_to": { "type": "integer" }
       }
     },
@@ -99,7 +118,9 @@
       "properties": {
         "id": { "type": "integer" },
         "conversation_id": { "type": "integer" },
+        "conversation_public_id": { "type": "string", "format": "uuid" },
         "sender_id": { "type": "integer" },
+        "sender_public_id": { "type": "string", "format": "uuid" },
         "sender_type": { "type": "string" },
         "content_type": { "type": "string" },
         "layers": { "$ref": "#/$defs/messageLayers" },
@@ -115,6 +136,14 @@
           "type": "array",
           "items": { "type": "string" }
         },
+        "mention_refs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/mentionRef" }
+        },
+        "assigned_public_ids": {
+          "type": "array",
+          "items": { "type": "string", "format": "uuid" }
+        },
         "reply_to": { "type": "integer" },
         "created_at": { "type": "string", "format": "date-time" }
       }
@@ -128,4 +157,3 @@
     }
   }
 }
-

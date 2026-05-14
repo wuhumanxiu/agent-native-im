@@ -697,6 +697,7 @@ Send a message to a conversation.
   ```json
   {
     "conversation_id": 1,
+    "conversation_public_id": "2dca4d32-79bc-45b0-b6df-e5038bb6ad70",
     "content_type": "text|markdown|code|image|audio|file|artifact|system|task_handover (default: text)",
     "layers": {
       "summary": "string",
@@ -707,15 +708,31 @@ Send a message to a conversation.
     },
     "attachments": [ { "url": "...", "filename": "...", "size": 1024, "mime_type": "..." } ],
     "stream_id": "string (optional)",
+    "mention_refs": [
+      {
+        "public_id": "550e8400-e29b-41d4-a716-446655440000",
+        "handle": "bot_alice",
+        "display_name": "Alice",
+        "entity_type": "bot",
+        "text": "@alice"
+      }
+    ],
     "mention_public_ids": ["550e8400-e29b-41d4-a716-446655440000"],
+    "assigned_public_ids": ["550e8400-e29b-41d4-a716-446655440000"],
     "mentions": [2, 3],
     "reply_to": 456
   }
   ```
-- **Mentions**: Prefer `mention_public_ids` for external clients and agent
-  adapters. `mentions` remains a legacy internal entity-id fallback. Both
-  fields are validated against current conversation participants and persisted
-  as internal routing IDs.
+- **Conversation identity**: Prefer `conversation_public_id` for external
+  clients. `conversation_id` remains a legacy internal fallback.
+- **Mentions**: Prefer `mention_refs` when clients know the visible mention
+  text or handle, otherwise use `mention_public_ids`. `mentions` remains a
+  legacy internal entity-id fallback. All references are validated against
+  current conversation participants.
+- **Assignments**: `assigned_public_ids` is the subset of mentioned public IDs
+  that should be awakened or treated as assigned to act. If omitted, legacy
+  behavior assigns all mentioned entities. If provided as an empty array, the
+  message is mention-only and does not assign any mentioned bot/service.
 - **Response** `201`: Message object
 - **Errors**: `403 PERM_NOT_PARTICIPANT`, `403 PERM_OBSERVER_RESTRICTED`
 

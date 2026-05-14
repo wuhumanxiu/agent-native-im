@@ -1,6 +1,6 @@
 {
   "name": "ani-agent-protocol",
-  "version": "2026.5.12",
+  "version": "2026.5.14",
   "serverUrl": "https://agent-native.im",
   "apiBasePath": "/api/v1",
   "webSocketPath": "/api/v1/ws",
@@ -25,14 +25,20 @@
     "attachments",
     "mentions",
     "mention_public_ids",
+    "mention_refs",
+    "assigned_public_ids",
+    "conversation_public_id",
     "reply_to"
   ],
   "requiredPublicIdFields": [
     "public_id",
+    "conversation_public_id",
+    "sender_public_id",
     "source_public_id",
     "target_public_id",
     "participant_public_ids",
     "entity_public_id",
+    "assigned_public_ids",
     "public_ids",
     "presence_by_public_id"
   ],
