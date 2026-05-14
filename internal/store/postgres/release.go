@@ -126,6 +126,7 @@ func (s *PGStore) attachReleaseReads(ctx context.Context, releases []*model.Rele
 		if release := byID[read.ReleaseID]; release != nil {
 			readAt := read.ReadAt
 			release.ReadAt = &readAt
+			release.IsRead = true
 		}
 	}
 	return nil

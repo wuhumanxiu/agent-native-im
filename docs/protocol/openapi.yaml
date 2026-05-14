@@ -294,7 +294,7 @@ components:
       properties:
         kind:
           type: string
-          enum: [feature, fix, breaking, security, developer, known_issue]
+          enum: [new, improved, fixed, security, known_issue]
         title:
           type: string
         items:

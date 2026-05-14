@@ -37,6 +37,7 @@ type Release struct {
 	CreatedAt       time.Time        `bun:"created_at,nullzero,notnull,default:now()" json:"created_at"`
 
 	ReadAt *time.Time `bun:"-" json:"read_at,omitempty"`
+	IsRead bool       `bun:"-" json:"is_read"`
 }
 
 type ReleaseRead struct {

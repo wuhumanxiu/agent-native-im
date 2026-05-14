@@ -55,8 +55,11 @@ func TestReleaseListLatestAndRead(t *testing.T) {
 	if int(list["total"].(float64)) != 1 || int(list["unread_count"].(float64)) != 1 {
 		t.Fatalf("unexpected release list: %#v", list)
 	}
-	items := list["items"].([]any)
-	releaseID := int(items[0].(map[string]any)["id"].(float64))
+	releases := list["releases"].([]any)
+	if len(releases) != 1 || releases[0].(map[string]any)["is_read"].(bool) {
+		t.Fatalf("expected unread release list: %#v", list)
+	}
+	releaseID := int(releases[0].(map[string]any)["id"].(float64))
 
 	resp = doJSON(t, "GET", "/api/v1/releases/latest", ptr(token), nil)
 	assertStatus(t, resp, http.StatusOK)
@@ -73,6 +76,10 @@ func TestReleaseListLatestAndRead(t *testing.T) {
 	readList := parseOK(t, resp)
 	if int(readList["unread_count"].(float64)) != 0 {
 		t.Fatalf("expected release to be marked read: %#v", readList)
+	}
+	readReleases := readList["releases"].([]any)
+	if len(readReleases) != 1 || !readReleases[0].(map[string]any)["is_read"].(bool) {
+		t.Fatalf("expected read release marker: %#v", readList)
 	}
 }
 

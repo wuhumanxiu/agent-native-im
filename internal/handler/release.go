@@ -37,6 +37,7 @@ func (s *Server) HandleListReleases(c *gin.Context) {
 		return
 	}
 	OK(c, http.StatusOK, gin.H{
+		"releases":     items,
 		"items":        items,
 		"total":        total,
 		"limit":        filter.Limit,
@@ -83,5 +84,5 @@ func (s *Server) HandleMarkReleaseRead(c *gin.Context) {
 		Fail(c, http.StatusInternalServerError, "failed to mark release read")
 		return
 	}
-	OK(c, http.StatusOK, gin.H{"message": "release marked read"})
+	OK(c, http.StatusOK, gin.H{"release_id": releaseID, "message": "release marked read"})
 }
