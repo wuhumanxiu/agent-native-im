@@ -140,6 +140,49 @@ func TestFriendRequestLifecycleWithPublicIDs(t *testing.T) {
 	}
 }
 
+func TestAcceptFriendRequestIsIdempotentForTarget(t *testing.T) {
+	truncateAll(t)
+	adminToken := seedAdmin(t)
+
+	resp := doJSON(t, "POST", "/api/v1/admin/users", ptr(adminToken), map[string]string{
+		"username": "friend-idempotent-a",
+		"password": "Friendpass1",
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	userAToken := login(t, "friend-idempotent-a", "Friendpass1")
+
+	resp = doJSON(t, "POST", "/api/v1/admin/users", ptr(adminToken), map[string]string{
+		"username": "friend-idempotent-b",
+		"password": "Friendpass1",
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	userBToken := login(t, "friend-idempotent-b", "Friendpass1")
+	userBID := int(parseOK(t, resp)["id"].(float64))
+
+	resp = doJSON(t, "POST", "/api/v1/friends/requests", ptr(userAToken), map[string]interface{}{
+		"target_entity_id": userBID,
+	})
+	assertStatus(t, resp, http.StatusCreated)
+	reqID := int(parseOK(t, resp)["id"].(float64))
+
+	resp = doJSON(t, "POST", fmt.Sprintf("/api/v1/friends/requests/%d/accept", reqID), ptr(userBToken), nil)
+	assertStatus(t, resp, http.StatusOK)
+
+	resp = doJSON(t, "POST", fmt.Sprintf("/api/v1/friends/requests/%d/accept", reqID), ptr(userBToken), nil)
+	assertStatus(t, resp, http.StatusOK)
+	data := parseOK(t, resp)
+	if data["already_accepted"] != true {
+		t.Fatalf("expected already_accepted=true on repeated accept, got %v", data["already_accepted"])
+	}
+
+	resp = doJSON(t, "GET", "/api/v1/friends", ptr(userAToken), nil)
+	assertStatus(t, resp, http.StatusOK)
+	friends := parseResponse(t, resp)["data"].([]interface{})
+	if len(friends) != 1 {
+		t.Fatalf("expected exactly 1 friend after repeated accept, got %d", len(friends))
+	}
+}
+
 func TestDirectConversationRequiresFriendshipUnlessBotOptIn(t *testing.T) {
 	truncateAll(t)
 	adminToken := seedAdmin(t)

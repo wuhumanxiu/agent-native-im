@@ -171,13 +171,13 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 // CreateRateLimiters creates rate limiters for different endpoints.
 func CreateRateLimiters() map[string]*RateLimiter {
 	return map[string]*RateLimiter{
-		"auth":     NewRateLimiter(5, time.Minute),                                  // 5 requests per minute for auth
-		"login":    NewRateLimiter(3, time.Minute),                                  // 3 login attempts per minute
-		"register": NewRateLimiter(2, time.Minute),                                  // 2 registrations per minute
-		"discover": NewRateLimiter(3, time.Minute),                                  // 3 discover searches per minute
-		"api":      NewRateLimiter(60, time.Minute).WithAPIRate(120),                // 60/min default, 120/min for bots
-		"message":  NewRateLimiter(30, time.Minute).WithAPIRate(60),                 // 30/min default, 60/min for bots
-		"file":     NewRateLimiter(10, time.Minute).WithAPIRate(20),                 // 10/min default, 20/min for bots
+		"auth":     NewRateLimiter(5, time.Minute),                   // 5 requests per minute for auth
+		"login":    NewRateLimiter(3, time.Minute),                   // 3 login attempts per minute
+		"register": NewRateLimiter(2, time.Minute),                   // 2 registrations per minute
+		"discover": NewRateLimiter(30, time.Minute),                  // UI search can issue repeated exact-match queries while users correct input
+		"api":      NewRateLimiter(60, time.Minute).WithAPIRate(120), // 60/min default, 120/min for bots
+		"message":  NewRateLimiter(30, time.Minute).WithAPIRate(60),  // 30/min default, 60/min for bots
+		"file":     NewRateLimiter(10, time.Minute).WithAPIRate(20),  // 10/min default, 20/min for bots
 	}
 }
 

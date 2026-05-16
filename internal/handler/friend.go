@@ -396,12 +396,22 @@ func (s *Server) HandleAcceptFriendRequest(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if friendReq.Status != model.FriendRequestPending {
-		FailWithCode(c, http.StatusBadRequest, ErrCodeStateBadTransition, "friend request is not pending")
-		return
-	}
 	if friendReq.TargetEntityID != actor.ID {
 		FailWithCode(c, http.StatusForbidden, ErrCodePermDenied, "cannot accept this request")
+		return
+	}
+	if friendReq.Status != model.FriendRequestPending {
+		if friendReq.Status == model.FriendRequestAccepted {
+			friendship, err := s.ensureFriendshipForFriendRequest(c, friendReq, actor.ID)
+			if err != nil {
+				Fail(c, http.StatusInternalServerError, "failed to create friendship")
+				return
+			}
+			s.attachFriendRequestIdentity(c.Request.Context(), friendReq)
+			OK(c, http.StatusOK, gin.H{"request": friendReq, "friendship": friendship, "already_accepted": true})
+			return
+		}
+		FailWithCode(c, http.StatusBadRequest, ErrCodeStateBadTransition, "friend request is not pending")
 		return
 	}
 	friendReq.Status = model.FriendRequestAccepted
@@ -410,15 +420,27 @@ func (s *Server) HandleAcceptFriendRequest(c *gin.Context) {
 		Fail(c, http.StatusInternalServerError, "failed to accept friend request")
 		return
 	}
-	low, high := orderedFriendEntityPair(friendReq.SourceEntityID, friendReq.TargetEntityID)
-	friendship := &model.Friendship{EntityLowID: low, EntityHighID: high, CreatedBy: actor.ID}
-	if err := s.Store.CreateFriendship(c.Request.Context(), friendship); err != nil {
+	friendship, err := s.ensureFriendshipForFriendRequest(c, friendReq, actor.ID)
+	if err != nil {
 		Fail(c, http.StatusInternalServerError, "failed to create friendship")
 		return
 	}
 	s.attachFriendRequestIdentity(c.Request.Context(), friendReq)
 	_ = s.broadcastFriendRequestUpdate(c, friendReq, "accepted")
 	OK(c, http.StatusOK, gin.H{"request": friendReq, "friendship": friendship})
+}
+
+func (s *Server) ensureFriendshipForFriendRequest(c *gin.Context, friendReq *model.FriendRequest, createdBy int64) (*model.Friendship, error) {
+	low, high := orderedFriendEntityPair(friendReq.SourceEntityID, friendReq.TargetEntityID)
+	friendship := &model.Friendship{EntityLowID: low, EntityHighID: high, CreatedBy: createdBy}
+	if err := s.Store.CreateFriendship(c.Request.Context(), friendship); err != nil {
+		return nil, err
+	}
+	existing, err := s.Store.GetFriendship(c.Request.Context(), friendReq.SourceEntityID, friendReq.TargetEntityID)
+	if err != nil || existing == nil {
+		return friendship, err
+	}
+	return existing, nil
 }
 
 func (s *Server) updateFriendRequestStatus(c *gin.Context, expectedEntityID int64, status model.FriendRequestStatus, message string) {
