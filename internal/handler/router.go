@@ -159,6 +159,7 @@ func NewRouter(s *Server) *gin.Engine {
 				// Participants & lifecycle
 				full.POST("/conversations/:id/participants", s.HandleAddParticipant)
 				full.DELETE("/conversations/:id/participants/:entityId", s.HandleRemoveParticipant)
+				full.PUT("/conversations/:id/participants/:entityId", s.HandleUpdateParticipantRole)
 				full.PUT("/conversations/:id/subscription", s.HandleUpdateSubscription)
 				full.POST("/conversations/:id/read", s.HandleMarkAsRead)
 				full.POST("/conversations/:id/leave", s.HandleLeaveConversation)

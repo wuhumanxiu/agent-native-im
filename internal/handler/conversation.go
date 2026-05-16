@@ -316,6 +316,7 @@ func (s *Server) HandleGetConversation(c *gin.Context) {
 		FailWithCode(c, http.StatusNotFound, ErrCodeConvNotFound, "conversation not found")
 		return
 	}
+	s.attachConversationIdentity(ctx, conv)
 
 	OK(c, http.StatusOK, conv)
 }
@@ -518,11 +519,11 @@ func (s *Server) HandleRemoveParticipant(c *gin.Context) {
 		return
 	}
 
-	targetID, err := strconv.ParseInt(c.Param("entityId"), 10, 64)
-	if err != nil {
-		Fail(c, http.StatusBadRequest, "invalid entity id")
+	target, ok := s.resolveParticipantPathEntity(c, c.Param("entityId"))
+	if !ok {
 		return
 	}
+	targetID := target.ID
 
 	entityID := auth.GetEntityID(c)
 	ctx := c.Request.Context()
@@ -547,12 +548,11 @@ func (s *Server) HandleRemoveParticipant(c *gin.Context) {
 
 	// System message
 	remover, _ := s.Store.GetEntityByID(ctx, entityID)
-	removed, _ := s.Store.GetEntityByID(ctx, targetID)
 	var summary string
 	if targetID == entityID {
 		summary = fmt.Sprintf("%s 离开了群聊", getEntityDisplayName(remover))
 	} else {
-		summary = fmt.Sprintf("%s 移除了 %s", getEntityDisplayName(remover), getEntityDisplayName(removed))
+		summary = fmt.Sprintf("%s 移除了 %s", getEntityDisplayName(remover), getEntityDisplayName(target))
 	}
 	s.broadcastSystemMessage(c, convID, entityID, summary)
 
@@ -560,13 +560,102 @@ func (s *Server) HandleRemoveParticipant(c *gin.Context) {
 	if s.Hub != nil {
 		s.Hub.UnsubscribeEntity(convID, targetID)
 		s.Hub.BroadcastEvent(convID, "conversation.updated", map[string]interface{}{
-			"conversation_id": convID,
-			"action":          "member_removed",
-			"entity_id":       targetID,
+			"conversation_id":  convID,
+			"action":           "member_removed",
+			"entity_id":        targetID,
+			"entity_public_id": target.PublicID,
 		})
 	}
 
 	OK(c, http.StatusOK, "participant removed")
+}
+
+// HandleUpdateParticipantRole changes a group participant role.
+func (s *Server) HandleUpdateParticipantRole(c *gin.Context) {
+	convID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		Fail(c, http.StatusBadRequest, "invalid conversation id")
+		return
+	}
+
+	target, ok := s.resolveParticipantPathEntity(c, c.Param("entityId"))
+	if !ok {
+		return
+	}
+
+	var req struct {
+		Role string `json:"role" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		Fail(c, http.StatusBadRequest, "role is required")
+		return
+	}
+
+	role := model.ParticipantRole(req.Role)
+	if role != model.RoleAdmin && role != model.RoleMember && role != model.RoleObserver {
+		Fail(c, http.StatusBadRequest, "role must be admin, member, or observer")
+		return
+	}
+
+	entityID := auth.GetEntityID(c)
+	ctx := c.Request.Context()
+
+	caller, err := s.Store.GetParticipant(ctx, convID, entityID)
+	if err != nil || caller == nil {
+		FailWithCode(c, http.StatusForbidden, ErrCodePermNotParticipant, "not a participant of this conversation")
+		return
+	}
+	if caller.Role != model.RoleOwner && caller.Role != model.RoleAdmin {
+		FailWithCode(c, http.StatusForbidden, ErrCodePermNotAdmin, "only owner or admin can update participant roles")
+		return
+	}
+
+	targetParticipant, err := s.Store.GetParticipant(ctx, convID, target.ID)
+	if err != nil || targetParticipant == nil {
+		Fail(c, http.StatusNotFound, "participant not found")
+		return
+	}
+	if targetParticipant.Role == model.RoleOwner {
+		FailWithCode(c, http.StatusForbidden, ErrCodePermNotAdmin, "owner role cannot be changed here")
+		return
+	}
+
+	if err := s.Store.UpdateParticipantRole(ctx, convID, target.ID, role); err != nil {
+		Fail(c, http.StatusInternalServerError, "failed to update participant role")
+		return
+	}
+
+	if s.Hub != nil {
+		s.Hub.BroadcastEvent(convID, "conversation.updated", map[string]interface{}{
+			"conversation_id":  convID,
+			"action":           "member_role_updated",
+			"entity_id":        target.ID,
+			"entity_public_id": target.PublicID,
+			"role":             role,
+		})
+	}
+
+	OK(c, http.StatusOK, gin.H{"entity_id": target.ID, "entity_public_id": target.PublicID, "role": role})
+}
+
+func (s *Server) resolveParticipantPathEntity(c *gin.Context, raw string) (*model.Entity, bool) {
+	ref := strings.TrimSpace(raw)
+	if ref == "" {
+		Fail(c, http.StatusBadRequest, "invalid participant id")
+		return nil, false
+	}
+	if numericID, err := strconv.ParseInt(ref, 10, 64); err == nil {
+		entity, ok := s.resolveEntityPublicIDInput(c, numericID, "", "participant")
+		if !ok || entity == nil {
+			return nil, false
+		}
+		return entity, true
+	}
+	entity, ok := s.resolveEntityPublicIDInput(c, 0, ref, "participant")
+	if !ok || entity == nil {
+		return nil, false
+	}
+	return entity, true
 }
 
 // HandleUpdateConversation updates a conversation's title and/or description.

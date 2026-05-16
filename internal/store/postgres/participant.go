@@ -26,6 +26,7 @@ func (s *PGStore) ListParticipants(ctx context.Context, conversationID int64) ([
 	var participants []*model.Participant
 	err := s.DB.NewSelect().Model(&participants).
 		Relation("Entity").
+		Relation("Entity.Owner").
 		Where("participant.conversation_id = ?", conversationID).
 		Where("participant.left_at IS NULL").
 		Scan(ctx)

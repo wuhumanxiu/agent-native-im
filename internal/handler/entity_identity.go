@@ -65,11 +65,47 @@ func (s *Server) attachEntityIdentity(ctx context.Context, entity *model.Entity)
 		return
 	}
 	if !changed {
+		s.attachEntityOwnerIdentity(ctx, entity)
 		return
 	}
 	if err := s.Store.UpdateEntity(ctx, entity); err != nil {
 		slog.Warn("failed to persist entity identity", "entity_id", entity.ID, "error", err)
 	}
+	s.attachEntityOwnerIdentity(ctx, entity)
+}
+
+func (s *Server) attachEntityOwnerIdentity(ctx context.Context, entity *model.Entity) {
+	if entity == nil || entity.OwnerID == nil || *entity.OwnerID == 0 {
+		return
+	}
+	owner := entity.Owner
+	if owner == nil {
+		var err error
+		owner, err = s.Store.GetEntityByID(ctx, *entity.OwnerID)
+		if err != nil {
+			slog.Warn("failed to load entity owner identity", "entity_id", entity.ID, "owner_id", *entity.OwnerID, "error", err)
+			return
+		}
+	}
+	if owner == nil {
+		return
+	}
+	changed, err := ensureEntityIdentity(owner)
+	if err != nil {
+		slog.Warn("failed to hydrate entity owner identity", "entity_id", entity.ID, "owner_id", owner.ID, "error", err)
+		return
+	}
+	if changed {
+		if err := s.Store.UpdateEntity(ctx, owner); err != nil {
+			slog.Warn("failed to persist entity owner identity", "entity_id", entity.ID, "owner_id", owner.ID, "error", err)
+		}
+	}
+	entity.OwnerPublicID = owner.PublicID
+	entity.OwnerName = owner.Name
+	entity.OwnerDisplayName = owner.DisplayName
+	// Keep API responses lightweight: expose only owner identity fields, not the
+	// full owner entity payload with unrelated profile details.
+	entity.Owner = nil
 }
 
 func (s *Server) attachEntitiesIdentity(ctx context.Context, entities []*model.Entity) {

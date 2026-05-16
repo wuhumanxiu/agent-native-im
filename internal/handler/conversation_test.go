@@ -188,6 +188,64 @@ func TestCreateGroupConversation(t *testing.T) {
 	assertStatus(t, resp, http.StatusCreated)
 }
 
+func TestGroupConversationParticipantsIncludeBotOwnerIdentity(t *testing.T) {
+	truncateAll(t)
+	token := seedAdmin(t)
+
+	meResp := doJSON(t, "GET", "/api/v1/me", ptr(token), nil)
+	assertStatus(t, meResp, http.StatusOK)
+	me := parseOK(t, meResp)
+	ownerID := int64(me["id"].(float64))
+	ownerPublicID := me["public_id"].(string)
+	ownerName := me["name"].(string)
+
+	botResp := doJSON(t, "POST", "/api/v1/entities", ptr(token), map[string]string{"name": "owner-visible-bot"})
+	assertStatus(t, botResp, http.StatusCreated)
+	botEntity := parseOK(t, botResp)["entity"].(map[string]interface{})
+	botID := int64(botEntity["id"].(float64))
+
+	convResp := doJSON(t, "POST", "/api/v1/conversations", ptr(token), map[string]interface{}{
+		"title":           "Owner identity group",
+		"conv_type":       "group",
+		"participant_ids": []int64{botID},
+	})
+	assertStatus(t, convResp, http.StatusCreated)
+	conv := parseOK(t, convResp)
+	participants := conv["participants"].([]interface{})
+	assertBotOwnerIdentity(t, participants, botID, ownerID, ownerPublicID, ownerName)
+
+	convID := int64(conv["id"].(float64))
+	getResp := doJSON(t, "GET", fmt.Sprintf("/api/v1/conversations/%d", convID), ptr(token), nil)
+	assertStatus(t, getResp, http.StatusOK)
+	getConv := parseOK(t, getResp)
+	assertBotOwnerIdentity(t, getConv["participants"].([]interface{}), botID, ownerID, ownerPublicID, ownerName)
+}
+
+func assertBotOwnerIdentity(t *testing.T, participants []interface{}, botID, ownerID int64, ownerPublicID, ownerName string) {
+	t.Helper()
+	var foundBot bool
+	for _, raw := range participants {
+		participant := raw.(map[string]interface{})
+		if int64(participant["entity_id"].(float64)) != botID {
+			continue
+		}
+		foundBot = true
+		entity := participant["entity"].(map[string]interface{})
+		if int64(entity["owner_id"].(float64)) != ownerID {
+			t.Fatalf("expected owner_id %d, got %v", ownerID, entity["owner_id"])
+		}
+		if entity["owner_public_id"] != ownerPublicID {
+			t.Fatalf("expected owner_public_id %s, got %v", ownerPublicID, entity["owner_public_id"])
+		}
+		if entity["owner_name"] != ownerName {
+			t.Fatalf("expected owner_name %s, got %v", ownerName, entity["owner_name"])
+		}
+	}
+	if !foundBot {
+		t.Fatalf("expected bot participant %d in %v", botID, participants)
+	}
+}
+
 func TestListConversations(t *testing.T) {
 	truncateAll(t)
 	token := seedAdmin(t)
@@ -317,6 +375,7 @@ func TestAddRemoveParticipant(t *testing.T) {
 	botData := parseOK(t, resp)
 	botEntity, _ := botData["entity"].(map[string]interface{})
 	botID := botEntity["id"].(float64)
+	botPublicID := botEntity["public_id"].(string)
 
 	// Create conversation
 	resp = doJSON(t, "POST", "/api/v1/conversations", ptr(token), map[string]interface{}{"title": "Part Test", "conv_type": "group"})
@@ -331,8 +390,29 @@ func TestAddRemoveParticipant(t *testing.T) {
 	assertStatus(t, resp, http.StatusCreated)
 
 	// Remove participant
-	resp = doJSON(t, "DELETE", fmt.Sprintf("/api/v1/conversations/%d/participants/%d", convID, int(botID)), ptr(token), nil)
+	resp = doJSON(t, "PUT", fmt.Sprintf("/api/v1/conversations/%d/participants/%s", convID, botPublicID), ptr(token), map[string]string{
+		"role": "observer",
+	})
 	assertStatus(t, resp, http.StatusOK)
+
+	// Remove participant by public_id; numeric entity ids remain supported for older clients.
+	resp = doJSON(t, "DELETE", fmt.Sprintf("/api/v1/conversations/%d/participants/%s", convID, botPublicID), ptr(token), nil)
+	assertStatus(t, resp, http.StatusOK)
+
+	resp = doJSON(t, "GET", fmt.Sprintf("/api/v1/conversations/%d", convID), ptr(token), nil)
+	assertStatus(t, resp, http.StatusOK)
+	convAfterRemove := parseOK(t, resp)
+	assertParticipantAbsent(t, convAfterRemove["participants"].([]interface{}), int64(botID))
+}
+
+func assertParticipantAbsent(t *testing.T, participants []interface{}, entityID int64) {
+	t.Helper()
+	for _, raw := range participants {
+		participant := raw.(map[string]interface{})
+		if int64(participant["entity_id"].(float64)) == entityID {
+			t.Fatalf("expected entity %d to be absent from active participants: %v", entityID, participants)
+		}
+	}
 }
 
 // TestRemoveParticipantRoleCheck verifies that only owner/admin can remove others.

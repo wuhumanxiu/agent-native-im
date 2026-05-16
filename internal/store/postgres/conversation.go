@@ -5,8 +5,13 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/uptrace/bun"
 	"github.com/wzfukui/agent-native-im/internal/model"
 )
+
+func activeParticipantsRelation(q *bun.SelectQuery) *bun.SelectQuery {
+	return q.Where("participant.left_at IS NULL")
+}
 
 func (s *PGStore) CreateConversation(ctx context.Context, conv *model.Conversation) error {
 	_, err := s.DB.NewInsert().Model(conv).Exec(ctx)
@@ -16,7 +21,7 @@ func (s *PGStore) CreateConversation(ctx context.Context, conv *model.Conversati
 func (s *PGStore) GetConversation(ctx context.Context, id int64) (*model.Conversation, error) {
 	conv := new(model.Conversation)
 	err := s.DB.NewSelect().Model(conv).
-		Relation("Participants").
+		Relation("Participants", activeParticipantsRelation).
 		Relation("Participants.Entity").
 		Where("conversation.id = ?", id).
 		Scan(ctx)
@@ -29,7 +34,7 @@ func (s *PGStore) GetConversation(ctx context.Context, id int64) (*model.Convers
 func (s *PGStore) GetConversationByPublicID(ctx context.Context, publicID string) (*model.Conversation, error) {
 	conv := new(model.Conversation)
 	err := s.DB.NewSelect().Model(conv).
-		Relation("Participants").
+		Relation("Participants", activeParticipantsRelation).
 		Relation("Participants.Entity").
 		Where("conversation.metadata->>'public_id' = ?", publicID).
 		Scan(ctx)
@@ -70,7 +75,7 @@ func (s *PGStore) ListConversationsByEntity(ctx context.Context, entityID int64)
 		Where("p.entity_id = ?", entityID).
 		Where("p.left_at IS NULL").
 		Where("p.archived_at IS NULL").
-		Relation("Participants").
+		Relation("Participants", activeParticipantsRelation).
 		Relation("Participants.Entity").
 		OrderExpr("conversation.updated_at DESC").
 		Scan(ctx)
@@ -84,7 +89,7 @@ func (s *PGStore) ListArchivedConversationsByEntity(ctx context.Context, entityI
 		Where("p.entity_id = ?", entityID).
 		Where("p.left_at IS NULL").
 		Where("p.archived_at IS NOT NULL").
-		Relation("Participants").
+		Relation("Participants", activeParticipantsRelation).
 		Relation("Participants.Entity").
 		OrderExpr("conversation.updated_at DESC").
 		Scan(ctx)
@@ -94,7 +99,7 @@ func (s *PGStore) ListArchivedConversationsByEntity(ctx context.Context, entityI
 func (s *PGStore) ListAllConversations(ctx context.Context, limit, offset int) ([]*model.Conversation, int, error) {
 	var convs []*model.Conversation
 	count, err := s.DB.NewSelect().Model(&convs).
-		Relation("Participants").
+		Relation("Participants", activeParticipantsRelation).
 		Relation("Participants.Entity").
 		OrderExpr("conversation.updated_at DESC").
 		Limit(limit).

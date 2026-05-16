@@ -35,6 +35,9 @@ type Entity struct {
 	AccessPasswordHash    string          `bun:"access_password_hash,nullzero" json:"-"`
 	Metadata              json.RawMessage `bun:"metadata,type:jsonb,notnull,default:'{}'" json:"metadata,omitempty"`
 	OwnerID               *int64          `bun:"owner_id" json:"owner_id,omitempty"`
+	OwnerPublicID         string          `bun:"-" json:"owner_public_id,omitempty"`
+	OwnerName             string          `bun:"-" json:"owner_name,omitempty"`
+	OwnerDisplayName      string          `bun:"-" json:"owner_display_name,omitempty"`
 	CreatedAt             time.Time       `bun:"created_at,nullzero,notnull,default:now()" json:"created_at"`
 	UpdatedAt             time.Time       `bun:"updated_at,nullzero,notnull,default:now()" json:"updated_at"`
 
