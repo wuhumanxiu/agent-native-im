@@ -37,6 +37,14 @@ func normalizeStoredAvatarURL(raw string) string {
 	return value
 }
 
+func isAllowedAvatarURL(value string) bool {
+	return strings.HasPrefix(value, "http://") ||
+		strings.HasPrefix(value, "https://") ||
+		strings.HasPrefix(value, "data:image/") ||
+		strings.HasPrefix(value, "/files/") ||
+		strings.HasPrefix(value, "/bot-avatars/")
+}
+
 // validatePassword checks if a password meets security requirements
 func validatePassword(password string) error {
 	if len(password) < 8 {

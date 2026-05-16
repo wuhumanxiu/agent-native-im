@@ -413,6 +413,24 @@ func TestUpdateEntityNormalizesStableAvatarRoutes(t *testing.T) {
 	}
 }
 
+func TestUpdateEntityAcceptsSystemBotAvatar(t *testing.T) {
+	truncateAll(t)
+	token := seedAdmin(t)
+
+	resp := doJSON(t, "POST", "/api/v1/entities", ptr(token), map[string]string{"name": "system-avatar-bot"})
+	assertStatus(t, resp, http.StatusCreated)
+	entityID := int(parseOK(t, resp)["entity"].(map[string]interface{})["id"].(float64))
+
+	resp = doJSON(t, "PUT", fmt.Sprintf("/api/v1/entities/%d", entityID), ptr(token), map[string]interface{}{
+		"avatar_url": "/bot-avatars/ani-bot-01.png",
+	})
+	assertStatus(t, resp, http.StatusOK)
+	data := parseOK(t, resp)
+	if data["avatar_url"] != "/bot-avatars/ani-bot-01.png" {
+		t.Fatalf("expected system avatar URL persisted, got %v", data["avatar_url"])
+	}
+}
+
 func TestWebhookOwnership(t *testing.T) {
 	truncateAll(t)
 	token := seedAdmin(t)
