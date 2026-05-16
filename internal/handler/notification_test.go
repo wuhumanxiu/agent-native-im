@@ -32,6 +32,13 @@ func TestNotificationPushPathRoutesFriendNotificationsToFriends(t *testing.T) {
 	}
 }
 
+func TestNotificationPushPathRoutesReleaseNotificationsToReleaseCenter(t *testing.T) {
+	notification := &model.Notification{RecipientEntityID: 7, Kind: "release.published"}
+	if got := notificationPushPath(notification); got != "/settings/releases" {
+		t.Fatalf("expected release center path, got %q", got)
+	}
+}
+
 func TestNotificationPushPathFallsBackToInboxScope(t *testing.T) {
 	notification := &model.Notification{RecipientEntityID: 19, Kind: "public.bot_session_created"}
 	if got := notificationPushPath(notification); got != "/inbox?scope=19" {

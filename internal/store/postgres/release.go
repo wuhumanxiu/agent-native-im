@@ -2,15 +2,37 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
+	"time"
 
 	"github.com/uptrace/bun"
 	"github.com/wzfukui/agent-native-im/internal/model"
 )
 
 func (s *PGStore) CreateRelease(ctx context.Context, release *model.Release) error {
+	if release != nil {
+		if release.TitleI18N == nil {
+			release.TitleI18N = map[string]string{}
+		}
+		if release.SummaryI18N == nil {
+			release.SummaryI18N = map[string]string{}
+		}
+		if release.SectionsI18N == nil {
+			release.SectionsI18N = map[string][]model.ReleaseSection{}
+		}
+		if release.ActionsI18N == nil {
+			release.ActionsI18N = map[string][]model.ReleaseAction{}
+		}
+		if release.KnownIssuesI18N == nil {
+			release.KnownIssuesI18N = map[string][]string{}
+		}
+	}
 	_, err := s.DB.NewInsert().Model(release).Exec(ctx)
-	return err
+	if err != nil {
+		return err
+	}
+	return s.createReleaseNotifications(ctx, release)
 }
 
 func (s *PGStore) GetReleaseByID(ctx context.Context, id int64) (*model.Release, error) {
@@ -105,6 +127,68 @@ func (s *PGStore) CountUnreadReleases(ctx context.Context, entityID int64, chann
 				Where("release_read.entity_id = ?", entityID),
 		).
 		Count(ctx)
+}
+
+func (s *PGStore) createReleaseNotifications(ctx context.Context, release *model.Release) error {
+	if release == nil || release.ID <= 0 || release.Channel != "production" {
+		return nil
+	}
+	titleI18N, err := json.Marshal(release.TitleI18N)
+	if err != nil {
+		return err
+	}
+	bodyI18N, err := json.Marshal(release.SummaryI18N)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	_, err = s.DB.NewRaw(`
+		INSERT INTO notifications (
+			recipient_entity_id,
+			kind,
+			status,
+			title,
+			body,
+			data,
+			created_at,
+			updated_at
+		)
+		SELECT
+			entity.id,
+			?,
+			?,
+			?,
+			?,
+			jsonb_build_object(
+				'release_id', ?::bigint,
+				'release_public_id', ?::text,
+				'version', ?::text,
+				'path', ?::text,
+				'title_i18n', ?::jsonb,
+				'body_i18n', ?::jsonb
+			),
+			?,
+			?
+		FROM entities AS entity
+		WHERE entity.entity_type = ? AND entity.status = ?
+		ON CONFLICT DO NOTHING
+	`,
+		"release.published",
+		model.NotificationUnread,
+		"ANI update "+release.Version,
+		release.Title,
+		release.ID,
+		release.PublicID,
+		release.Version,
+		"/settings/releases",
+		string(titleI18N),
+		string(bodyI18N),
+		now,
+		now,
+		model.EntityUser,
+		"active",
+	).Exec(ctx)
+	return err
 }
 
 func (s *PGStore) attachReleaseReads(ctx context.Context, releases []*model.Release, entityID int64) error {

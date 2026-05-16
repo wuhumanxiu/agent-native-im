@@ -88,6 +88,8 @@ func notificationPushPath(notification *model.Notification) string {
 	switch notification.Kind {
 	case "friend.request.received", "friend.request.accepted", "friend.request.rejected", "friend.request.canceled":
 		return "/friends"
+	case "release.published":
+		return "/settings/releases"
 	}
 	if publicID := notificationConversationPublicID(notification); publicID != "" {
 		return "/chat/" + url.PathEscape(publicID)
