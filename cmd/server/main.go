@@ -11,15 +11,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/wzfukui/agent-native-im/internal/config"
-	"github.com/wzfukui/agent-native-im/internal/filestore"
-	"github.com/wzfukui/agent-native-im/internal/handler"
-	"github.com/wzfukui/agent-native-im/internal/model"
-	"github.com/wzfukui/agent-native-im/internal/push"
-	"github.com/wzfukui/agent-native-im/internal/store/postgres"
-	"github.com/wzfukui/agent-native-im/internal/utils"
-	"github.com/wzfukui/agent-native-im/internal/webhook"
-	"github.com/wzfukui/agent-native-im/internal/ws"
+	"github.com/wuhumanxiu/agent-native-im/internal/config"
+	"github.com/wuhumanxiu/agent-native-im/internal/filestore"
+	"github.com/wuhumanxiu/agent-native-im/internal/handler"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/push"
+	"github.com/wuhumanxiu/agent-native-im/internal/store/postgres"
+	"github.com/wuhumanxiu/agent-native-im/internal/utils"
+	"github.com/wuhumanxiu/agent-native-im/internal/webhook"
+	"github.com/wuhumanxiu/agent-native-im/internal/ws"
 )
 
 func main() {

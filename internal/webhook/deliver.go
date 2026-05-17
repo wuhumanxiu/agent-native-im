@@ -12,8 +12,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/wzfukui/agent-native-im/internal/model"
-	"github.com/wzfukui/agent-native-im/internal/store"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/store"
 )
 
 // Deliverer handles async webhook delivery with retry.

@@ -229,9 +229,9 @@ If `/api/v1/ws` falls through a generic `/api/` proxy block without the upgrade 
 
 | Project | Description |
 |---|---|
-| [agent-native-im-web](https://github.com/wzfukui/agent-native-im-web) | Web UI (React 19) |
-| [agent-native-im-mobile](https://github.com/wzfukui/agent-native-im-mobile) | Expo / React Native mobile app (`ANI`) |
-| [agent-native-im-sdk-python](https://github.com/wzfukui/agent-native-im-sdk-python) | Python SDK |
+| [agent-native-im-web](https://github.com/wuhumanxiu/agent-native-im-web) | Web UI (React 19) |
+| [agent-native-im-mobile](https://github.com/wuhumanxiu/agent-native-im-mobile) | Expo / React Native mobile app (`ANI`) |
+| [agent-native-im-sdk-python](https://github.com/wuhumanxiu/agent-native-im-sdk-python) | Python SDK |
 | [@openclaw/ani](../openclaw/extensions/ani/) | OpenClaw channel plugin |
 
 ## Product Baseline

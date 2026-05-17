@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/wzfukui/agent-native-im/internal/auth"
-	"github.com/wzfukui/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/auth"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
 var validFeedbackTypes = map[string]bool{

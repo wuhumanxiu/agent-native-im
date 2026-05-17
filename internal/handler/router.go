@@ -8,15 +8,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/wzfukui/agent-native-im/internal/auth"
-	"github.com/wzfukui/agent-native-im/internal/config"
-	"github.com/wzfukui/agent-native-im/internal/filestore"
-	"github.com/wzfukui/agent-native-im/internal/middleware"
-	"github.com/wzfukui/agent-native-im/internal/model"
-	"github.com/wzfukui/agent-native-im/internal/push"
-	"github.com/wzfukui/agent-native-im/internal/store"
-	"github.com/wzfukui/agent-native-im/internal/webhook"
-	"github.com/wzfukui/agent-native-im/internal/ws"
+	"github.com/wuhumanxiu/agent-native-im/internal/auth"
+	"github.com/wuhumanxiu/agent-native-im/internal/config"
+	"github.com/wuhumanxiu/agent-native-im/internal/filestore"
+	"github.com/wuhumanxiu/agent-native-im/internal/middleware"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/push"
+	"github.com/wuhumanxiu/agent-native-im/internal/store"
+	"github.com/wuhumanxiu/agent-native-im/internal/webhook"
+	"github.com/wuhumanxiu/agent-native-im/internal/ws"
 )
 
 type AuthHelper struct {

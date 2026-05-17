@@ -16,9 +16,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/wzfukui/agent-native-im/internal/auth"
-	"github.com/wzfukui/agent-native-im/internal/model"
-	"github.com/wzfukui/agent-native-im/internal/ws"
+	"github.com/wuhumanxiu/agent-native-im/internal/auth"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/ws"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -196,9 +196,9 @@ func (s *Server) HandleCreateEntity(c *gin.Context) {
 ## Quick Start (OpenClaw Plugin)
 
 `+"```bash"+`
-npx -y @wzfukui/openclaw-ani-installer install
-npx -y @wzfukui/openclaw-ani-installer update
-npx -y @wzfukui/openclaw-ani-installer doctor
+npx -y @wuhumanxiu/openclaw-ani-installer install
+npx -y @wuhumanxiu/openclaw-ani-installer update
+npx -y @wuhumanxiu/openclaw-ani-installer doctor
 
 # Trust and enable the ANI plugin
 openclaw config set plugins.allow '["ani"]' --strict-json
@@ -231,8 +231,8 @@ If ANI does not appear online after applying the config, ask the user to reconne
 
 ### More Information
 
-- Installer package: https://www.npmjs.com/package/@wzfukui/openclaw-ani-installer
-- Plugin package: https://www.npmjs.com/package/@wzfukui/openclaw-ani
+- Installer package: https://www.npmjs.com/package/@wuhumanxiu/openclaw-ani-installer
+- Plugin package: https://www.npmjs.com/package/@wuhumanxiu/openclaw-ani
 `,
 		entity.DisplayName,
 		serverURL, wsURL, returnedKey,

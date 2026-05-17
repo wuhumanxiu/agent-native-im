@@ -1,6 +1,6 @@
 package ws
 
-import "github.com/wzfukui/agent-native-im/internal/model"
+import "github.com/wuhumanxiu/agent-native-im/internal/model"
 
 // WSMessage is the JSON envelope for all WebSocket communication.
 type WSMessage struct {

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/wzfukui/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
 // RateLimiter implements a simple token bucket algorithm for rate limiting

@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
-	"github.com/wzfukui/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
 const entityPublicIDKey = "public_id"

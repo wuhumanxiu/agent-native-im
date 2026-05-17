@@ -47,7 +47,7 @@ func TestCreateBot(t *testing.T) {
 	if strings.Contains(markdownDoc, "agent-native-im-sdk-python") {
 		t.Fatal("markdown_doc should not direct OpenClaw users to the Python SDK")
 	}
-	if !strings.Contains(markdownDoc, "npx -y @wzfukui/openclaw-ani-installer install") {
+	if !strings.Contains(markdownDoc, "npx -y @wuhumanxiu/openclaw-ani-installer install") {
 		t.Fatal("markdown_doc should contain the recommended installer path")
 	}
 	if strings.Contains(markdownDoc, "Entity ID") {

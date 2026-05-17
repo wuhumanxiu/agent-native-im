@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/wzfukui/agent-native-im/internal/auth"
+	"github.com/wuhumanxiu/agent-native-im/internal/auth"
 )
 
 func (s *Server) HandleUpdates(c *gin.Context) {

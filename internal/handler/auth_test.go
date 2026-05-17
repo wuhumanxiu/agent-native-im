@@ -14,8 +14,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/wzfukui/agent-native-im/internal/auth"
-	"github.com/wzfukui/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/auth"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
 func TestPing(t *testing.T) {

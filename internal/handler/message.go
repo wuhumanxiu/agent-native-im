@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/wzfukui/agent-native-im/internal/auth"
-	"github.com/wzfukui/agent-native-im/internal/mention"
-	"github.com/wzfukui/agent-native-im/internal/model"
-	"github.com/wzfukui/agent-native-im/internal/ws"
+	"github.com/wuhumanxiu/agent-native-im/internal/auth"
+	"github.com/wuhumanxiu/agent-native-im/internal/mention"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/ws"
 )
 
 // populateSenders batch-fetches sender entities for a slice of messages and

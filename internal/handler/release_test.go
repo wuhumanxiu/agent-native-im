@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/wzfukui/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
 func seedRelease(t *testing.T, version string) int64 {

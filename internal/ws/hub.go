@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wzfukui/agent-native-im/internal/mention"
-	"github.com/wzfukui/agent-native-im/internal/model"
-	"github.com/wzfukui/agent-native-im/internal/store"
+	"github.com/wuhumanxiu/agent-native-im/internal/mention"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/store"
 )
 
 // PushFunc is called for offline users when a message is broadcast.

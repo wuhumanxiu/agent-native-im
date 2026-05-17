@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/uptrace/bun"
-	"github.com/wzfukui/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
 func (s *PGStore) CreateFeedbackItem(ctx context.Context, item *model.FeedbackItem) error {

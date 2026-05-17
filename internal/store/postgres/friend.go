@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/uptrace/bun"
-	"github.com/wzfukui/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
 func orderedFriendPair(entityA, entityB int64) (int64, int64) {

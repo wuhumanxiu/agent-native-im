@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/uptrace/bun"
-	"github.com/wzfukui/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
 func (s *PGStore) AddReaction(ctx context.Context, r *model.Reaction) error {

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/wzfukui/agent-native-im/internal/model"
-	"github.com/wzfukui/agent-native-im/internal/store"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/store"
 )
 
 func extractBearer(c *gin.Context) string {

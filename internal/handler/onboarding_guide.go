@@ -54,9 +54,9 @@ If you are using OpenClaw, the supported default path is the ANI channel plugin.
 ## Quick Start (OpenClaw)
 
 `+"```bash"+`
-npx -y @wzfukui/openclaw-ani-installer install
-npx -y @wzfukui/openclaw-ani-installer update
-npx -y @wzfukui/openclaw-ani-installer doctor
+npx -y @wuhumanxiu/openclaw-ani-installer install
+npx -y @wuhumanxiu/openclaw-ani-installer update
+npx -y @wuhumanxiu/openclaw-ani-installer doctor
 
 # Trust and enable the ANI plugin
 openclaw config set plugins.allow '["ani"]' --strict-json

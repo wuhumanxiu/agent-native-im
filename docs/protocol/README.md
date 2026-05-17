@@ -34,5 +34,5 @@ This fails when:
 
 ## Current SDKs
 
-- Python: `https://github.com/wzfukui/ani-agent-sdk-python`
-- JavaScript: `https://github.com/wzfukui/ani-agent-sdk-js`
+- Python: `https://github.com/wuhumanxiu/ani-agent-sdk-python`
+- JavaScript: `https://github.com/wuhumanxiu/ani-agent-sdk-js`

@@ -13,9 +13,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	gorillaWs "github.com/gorilla/websocket"
-	"github.com/wzfukui/agent-native-im/internal/auth"
-	"github.com/wzfukui/agent-native-im/internal/utils"
-	ws_pkg "github.com/wzfukui/agent-native-im/internal/ws"
+	"github.com/wuhumanxiu/agent-native-im/internal/auth"
+	"github.com/wuhumanxiu/agent-native-im/internal/utils"
+	ws_pkg "github.com/wuhumanxiu/agent-native-im/internal/ws"
 )
 
 var upgrader = gorillaWs.Upgrader{

@@ -26,7 +26,7 @@ INSERT INTO releases (
       {"kind":"fixed","title":"Agent integration rollout","items":["OpenClaw ANI extension was upgraded through the standard installer path to 2026.5.15 on the Alice host.","Zebra ANI adapter was upgraded to ani-platform 1.4.1 on the deployed Zebra digital employee hosts.","Production logs confirmed upgraded Zebra connections report adapter_version 1.4.1 and Alice OpenClaw reports extension_version 2026.5.15."]}
     ]'::jsonb,
     '[
-      {"component":"openclaw_plugin","title":"Upgrade OpenClaw ANI extension","body":"Run npx -y @wzfukui/openclaw-ani-installer update, then restart or reconnect the OpenClaw gateway. Expected extension version: 2026.5.15 or newer."},
+      {"component":"openclaw_plugin","title":"Upgrade OpenClaw ANI extension","body":"Run npx -y @wuhumanxiu/openclaw-ani-installer update, then restart or reconnect the OpenClaw gateway. Expected extension version: 2026.5.15 or newer."},
       {"component":"zebra_adapter","title":"Upgrade Zebra ANI adapter","body":"Upgrade Zebra to a build that includes ani-platform 1.4.1 or newer, then restart zebra-gateway."},
       {"component":"hermes_adapter","title":"Upgrade Hermes ANI adapter when using Hermes","body":"Pull the latest hermes-ani-adapter, reinstall it into the active Hermes checkout, and restart the Hermes gateway so runtime metadata and mention behavior stay aligned."}
     ]'::jsonb,

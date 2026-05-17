@@ -1233,7 +1233,7 @@ List release notes for the current channel.
         "platform": "all",
         "channel": "production",
         "sections": [{ "kind": "feature", "title": "New", "items": ["..."] }],
-        "required_actions": [{ "title": "Upgrade OpenClaw ANI plugin", "command": "npx -y @wzfukui/openclaw-ani-installer update", "required": true }],
+        "required_actions": [{ "title": "Upgrade OpenClaw ANI plugin", "command": "npx -y @wuhumanxiu/openclaw-ani-installer update", "required": true }],
         "known_issues": [],
         "is_read": false
       }

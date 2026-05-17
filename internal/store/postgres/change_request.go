@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/wzfukui/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
 func (s *PGStore) CreateChangeRequest(ctx context.Context, cr *model.ChangeRequest) error {

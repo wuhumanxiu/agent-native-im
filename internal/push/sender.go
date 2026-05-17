@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
-	"github.com/wzfukui/agent-native-im/internal/config"
-	"github.com/wzfukui/agent-native-im/internal/model"
-	"github.com/wzfukui/agent-native-im/internal/store"
+	"github.com/wuhumanxiu/agent-native-im/internal/config"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/store"
 )
 
 // Sender handles sending Web Push notifications.

@@ -3,7 +3,7 @@ package postgres
 import (
 	"context"
 
-	"github.com/wzfukui/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
 func (s *PGStore) CreateWebhook(ctx context.Context, wh *model.Webhook) error {

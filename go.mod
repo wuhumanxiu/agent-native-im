@@ -1,4 +1,4 @@
-module github.com/wzfukui/agent-native-im
+module github.com/wuhumanxiu/agent-native-im
 
 go 1.25.0
 

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wzfukui/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
 func TestGenerateTokenWithTTL(t *testing.T) {

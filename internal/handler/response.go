@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/wzfukui/agent-native-im/internal/middleware"
+	"github.com/wuhumanxiu/agent-native-im/internal/middleware"
 )
 
 // OK sends a successful JSON response.

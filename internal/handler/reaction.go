@@ -5,8 +5,8 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/wzfukui/agent-native-im/internal/auth"
-	"github.com/wzfukui/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/auth"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
 // HandleToggleReaction adds or removes a reaction (toggle behavior).

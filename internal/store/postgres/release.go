@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/uptrace/bun"
-	"github.com/wzfukui/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
 func (s *PGStore) CreateRelease(ctx context.Context, release *model.Release) error {

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/wzfukui/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
 var ErrMentionNotParticipant = errors.New("mentioned entity is not a participant")

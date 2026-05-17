@@ -61,7 +61,7 @@ SET
     required_actions_i18n = jsonb_build_object(
         'en', required_actions,
         'zh-CN', '[
-          {"component":"openclaw_plugin","title":"升级 OpenClaw ANI extension","body":"运行 npx -y @wzfukui/openclaw-ani-installer update，然后重启或重连 OpenClaw gateway。期望 extension version 为 2026.5.15 或更新。"},
+          {"component":"openclaw_plugin","title":"升级 OpenClaw ANI extension","body":"运行 npx -y @wuhumanxiu/openclaw-ani-installer update，然后重启或重连 OpenClaw gateway。期望 extension version 为 2026.5.15 或更新。"},
           {"component":"zebra_adapter","title":"升级 Zebra ANI adapter","body":"升级 Zebra 到包含 ani-platform 1.4.1 或更新版本的构建，然后重启 zebra-gateway。"},
           {"component":"hermes_adapter","title":"使用 Hermes 时升级 Hermes ANI adapter","body":"拉取最新 hermes-ani-adapter，重新安装到当前 Hermes checkout，并重启 Hermes gateway，以保持 runtime metadata 与 mention 行为一致。"}
         ]'::jsonb

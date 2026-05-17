@@ -17,12 +17,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/wzfukui/agent-native-im/internal/config"
-	"github.com/wzfukui/agent-native-im/internal/filestore"
-	"github.com/wzfukui/agent-native-im/internal/handler"
-	"github.com/wzfukui/agent-native-im/internal/store/postgres"
-	"github.com/wzfukui/agent-native-im/internal/webhook"
-	"github.com/wzfukui/agent-native-im/internal/ws"
+	"github.com/wuhumanxiu/agent-native-im/internal/config"
+	"github.com/wuhumanxiu/agent-native-im/internal/filestore"
+	"github.com/wuhumanxiu/agent-native-im/internal/handler"
+	"github.com/wuhumanxiu/agent-native-im/internal/store/postgres"
+	"github.com/wuhumanxiu/agent-native-im/internal/webhook"
+	"github.com/wuhumanxiu/agent-native-im/internal/ws"
 )
 
 var (

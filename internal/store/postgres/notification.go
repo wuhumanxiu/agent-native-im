@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/wzfukui/agent-native-im/internal/model"
+	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
 func (s *PGStore) CreateNotification(ctx context.Context, notification *model.Notification) error {

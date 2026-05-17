@@ -5,7 +5,7 @@
   "apiBasePath": "/api/v1",
   "webSocketPath": "/api/v1/ws",
   "source": {
-    "repository": "https://github.com/wzfukui/agent-native-im",
+    "repository": "https://github.com/wuhumanxiu/agent-native-im",
     "openapi": "docs/protocol/openapi.yaml",
     "webSocketSchema": "docs/protocol/ws-events.schema.json"
   },

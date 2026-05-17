@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wzfukui/agent-native-im/internal/handler"
+	"github.com/wuhumanxiu/agent-native-im/internal/handler"
 )
 
 // --- helpers ---
