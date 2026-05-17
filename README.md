@@ -139,8 +139,8 @@ It does not guarantee that every bot or model can understand every file type.
 
 For the current detailed matrix, see:
 
-- `../../_experience/ani-attachment-capability-matrix-2026-03-20.md`
-- `../../_experience/ani-public-release-checklist-2026-03-20.md`
+- workspace `docs/experience/ani-attachment-capability-matrix-2026-03-20.md`
+- workspace `docs/experience/ani-public-release-checklist-2026-03-20.md`
 
 ### WebSocket Events
 
@@ -231,8 +231,8 @@ If `/api/v1/ws` falls through a generic `/api/` proxy block without the upgrade 
 |---|---|
 | [agent-native-im-web](https://github.com/wuhumanxiu/agent-native-im-web) | Web UI (React 19) |
 | [agent-native-im-mobile](https://github.com/wuhumanxiu/agent-native-im-mobile) | Expo / React Native mobile app (`ANI`) |
-| [agent-native-im-sdk-python](https://github.com/wuhumanxiu/agent-native-im-sdk-python) | Python SDK |
-| [@openclaw/ani](../openclaw/extensions/ani/) | OpenClaw channel plugin |
+| [ani-agent-sdk-python](https://github.com/wuhumanxiu/ani-agent-sdk-python) | Python SDK |
+| [@wuhumanxiu/openclaw-ani](https://github.com/wuhumanxiu/openclaw-ani) | OpenClaw channel plugin |
 
 ## Product Baseline
 

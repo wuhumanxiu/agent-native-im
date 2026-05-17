@@ -393,7 +393,7 @@ All future integrations should follow these rules:
 
 The current reference implementation is:
 
-- `dev/openclaw/extensions/ani`
+- `~/code/agent-native-im/openclaw/extensions/ani`
 
 It should be treated as:
 

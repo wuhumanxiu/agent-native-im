@@ -22,9 +22,9 @@ Status:
 
 After Apple review succeeds, do this cleanup:
 
-1. Remove web fallback logic in [api.ts](dev/agent-native-im-web/src/lib/api.ts) and [AppLayout.tsx](dev/agent-native-im-web/src/layouts/AppLayout.tsx).
+1. Remove web fallback logic in `api.ts` at `~/code/agent-native-im/agent-native-im-web/src/lib/api.ts` and `AppLayout.tsx` at `~/code/agent-native-im/agent-native-im-web/src/layouts/AppLayout.tsx`.
 2. Keep per-entity endpoints only for explicit scoped pages/actions if still needed.
-3. Re-check [FriendsPage.tsx](dev/agent-native-im-web/src/pages/FriendsPage.tsx) and [InboxPage.tsx](dev/agent-native-im-web/src/pages/InboxPage.tsx) for any leftover entity polling.
+3. Re-check `FriendsPage.tsx` at `~/code/agent-native-im/agent-native-im-web/src/pages/FriendsPage.tsx` and `InboxPage.tsx` at `~/code/agent-native-im/agent-native-im-web/src/pages/InboxPage.tsx` for any leftover entity polling.
 4. Decide whether `GET /api/v1/entities` still needs to be called on app shell load.
 5. If no longer needed by web runtime, deprecate or remove these server routes:
    - `GET /api/v1/friends/requests`

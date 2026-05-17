@@ -1,7 +1,7 @@
 # ANI VNext Task Brief
 
 > Date: 2026-03-27
-> Scope: `dev/agent-native-im` + `dev/agent-native-im-web`
+> Scope: `~/code/agent-native-im/agent-native-im` + `~/code/agent-native-im/agent-native-im-web`
 > Goal: close the current stability gap first, then leave the codebase, docs, tests, and release notes in a releasable state.
 
 ## Version Goal

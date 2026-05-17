@@ -10,11 +10,11 @@ It does not restate every requirement. It defines where the current source of tr
 
 Repositories:
 
-- `dev/agent-native-im`
-- `dev/agent-native-im-web`
-- `dev/agent-native-im-mobile`
-- `dev/openclaw/extensions/ani`
-- `dev/openclaw-ani-installer`
+- `agent-native-im`
+- `agent-native-im-web`
+- `agent-native-im-mobile`
+- `openclaw/extensions/ani`
+- `openclaw-ani-installer`
 
 ## Source Of Truth Model
 
@@ -22,12 +22,12 @@ Repositories:
 
 Primary source:
 
-- [user-stories.md](dev/agent-native-im/docs/user-stories.md)
-- [test-cases.md](dev/agent-native-im/test-cases.md)
-- [ANI_AGENT_INTEGRATION_SPEC_V1.md](dev/agent-native-im/docs/ANI_AGENT_INTEGRATION_SPEC_V1.md)
-- [MESSAGING_CONSISTENCY_DRAFT_2026-04-04.md](dev/agent-native-im/docs/MESSAGING_CONSISTENCY_DRAFT_2026-04-04.md)
-- [BOT_SOCIAL_ACCESS_SPEC_2026-04-04.md](dev/agent-native-im/docs/BOT_SOCIAL_ACCESS_SPEC_2026-04-04.md)
-- [BOT_SOCIAL_ACCESS_TASK_BRIEF_2026-04-04.md](dev/agent-native-im/docs/BOT_SOCIAL_ACCESS_TASK_BRIEF_2026-04-04.md)
+- [user-stories.md](user-stories.md)
+- [test-cases.md](../test-cases.md)
+- [ANI_AGENT_INTEGRATION_SPEC_V1.md](ANI_AGENT_INTEGRATION_SPEC_V1.md)
+- [MESSAGING_CONSISTENCY_DRAFT_2026-04-04.md](MESSAGING_CONSISTENCY_DRAFT_2026-04-04.md)
+- [BOT_SOCIAL_ACCESS_SPEC_2026-04-04.md](BOT_SOCIAL_ACCESS_SPEC_2026-04-04.md)
+- [BOT_SOCIAL_ACCESS_TASK_BRIEF_2026-04-04.md](BOT_SOCIAL_ACCESS_TASK_BRIEF_2026-04-04.md)
 
 This layer defines platform-level truth:
 
@@ -45,8 +45,8 @@ This layer defines platform-level truth:
 
 Primary source:
 
-- [user-stories.md](dev/agent-native-im-web/docs/user-stories.md)
-- [test-cases.md](dev/agent-native-im-web/test-cases.md)
+- [user-stories.md](https://github.com/wuhumanxiu/agent-native-im-web/blob/main/docs/user-stories.md)
+- [test-cases.md](https://github.com/wuhumanxiu/agent-native-im-web/blob/main/test-cases.md)
 
 Web is the reference implementation for browser and desktop-style ANI behavior.
 
@@ -58,9 +58,9 @@ Important rule:
 
 Primary source:
 
-- [PRODUCT_PARITY_BASELINE.md](dev/agent-native-im-mobile/docs/PRODUCT_PARITY_BASELINE.md)
-- [USER_STORIES.md](dev/agent-native-im-mobile/docs/USER_STORIES.md)
-- [MOBILE_PARITY_TEST_CASES_2026-03-29.md](dev/agent-native-im-mobile/docs/MOBILE_PARITY_TEST_CASES_2026-03-29.md)
+- [PRODUCT_PARITY_BASELINE.md](https://github.com/wuhumanxiu/agent-native-im-mobile/blob/main/docs/PRODUCT_PARITY_BASELINE.md)
+- [USER_STORIES.md](https://github.com/wuhumanxiu/agent-native-im-mobile/blob/main/docs/USER_STORIES.md)
+- [MOBILE_PARITY_TEST_CASES_2026-03-29.md](https://github.com/wuhumanxiu/agent-native-im-mobile/blob/main/docs/MOBILE_PARITY_TEST_CASES_2026-03-29.md)
 
 Mobile is the compact-layout implementation of ANI, not a separate product.
 
@@ -72,9 +72,8 @@ Important rule:
 
 Primary source:
 
-- [README.md](dev/openclaw/extensions/ani/README.md)
-- [TEST_MATRIX.md](dev/openclaw/extensions/ani/docs/TEST_MATRIX.md)
-- [README.md](dev/openclaw-ani-installer/README.md)
+- [README.md](https://github.com/wuhumanxiu/openclaw-ani/blob/main/README.md)
+- [README.md](https://github.com/wuhumanxiu/openclaw-ani-installer/blob/main/README.md)
 
 This layer defines:
 
