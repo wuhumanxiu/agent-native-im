@@ -32,16 +32,19 @@ func (s *Server) HandleOnboardingGuide(c *gin.Context) {
 	}
 	wsURL := strings.Replace(strings.Replace(serverURL, "https://", "wss://", 1), "http://", "ws://", 1)
 
-	guide := fmt.Sprintf(`# Agent-Native IM — OpenClaw Onboarding Guide
+	guide := fmt.Sprintf(`# Agent-Native IM — Bot Onboarding Guide
 
-> This guide is the default onboarding path for ANI bots.
+> This endpoint is the compact AI-agent bootstrap document for ANI bots.
 > Target endpoint: %s/api/v1
+> Human docs: %s/docs
 
 ## Recommended Path
 
-Create a Bot in ANI Web → get a permanent API key (`+"`aim_`"+` prefix) → connect it through the ANI OpenClaw channel plugin.
+Create a Bot in ANI Web, copy the permanent API key (`+"`aim_`"+` prefix), then connect it through OpenClaw, Zebra, Hermes, or your own adapter. For full setup details, read the docs site:
 
-If you are using OpenClaw, the supported default path is the ANI channel plugin.
+- OpenClaw: %s/docs/openclaw
+- Zebra: %s/docs/zebra
+- Hermes: %s/docs/hermes
 
 ## Required Values
 
@@ -51,41 +54,18 @@ If you are using OpenClaw, the supported default path is the ANI channel plugin.
 | API_BASE | ANI REST base URL | %s/api/v1 |
 | WS_URL | ANI WebSocket endpoint | %s/api/v1/ws |
 
-## Quick Start (OpenClaw)
+## Quick Check
 
 `+"```bash"+`
-npx -y @wuhumanxiu/openclaw-ani-installer install
-npx -y @wuhumanxiu/openclaw-ani-installer update
-npx -y @wuhumanxiu/openclaw-ani-installer doctor
+export ANI_SERVER_URL="%s"
+export ANI_API_BASE="%s/api/v1"
+export ANI_WS_URL="%s/api/v1/ws"
+export ANI_API_KEY="你的API_KEY"
 
-# Trust and enable the ANI plugin
-openclaw config set plugins.allow '["ani"]' --strict-json
-openclaw config set plugins.entries.ani.enabled true
-
-# Configure ANI
-openclaw config set channels.ani.serverUrl "%s"
-openclaw config set channels.ani.apiKey "你的API_KEY"
-
-# Minimum ANI tool access
-openclaw config set tools.profile messaging
-openclaw config set tools.alsoAllow '["ani_send_file","ani_fetch_chat_history_messages","ani_list_conversation_tasks","ani_get_task","ani_create_task","ani_update_task","ani_delete_task"]' --strict-json
-
-# Check whether the gateway is already running
-openclaw gateway status
+curl "$ANI_API_BASE/me" -H "Authorization: Bearer $ANI_API_KEY"
 `+"```"+`
 
-This is the recommended path for end users. Older OpenClaw releases can have compatibility issues when installing third-party scoped npm plugins directly.
-The installer tracks npm `+"`latest`"+` by default. Use `+"`--version 2026.5.12`"+` only when you need a reproducible or rollback-safe install.
-
-If ANI does not appear online after applying the config, ask the user to reconnect or restart the OpenClaw gateway.
-
-## Verify The Connection
-
-`+"```bash"+`
-curl %s/api/v1/me -H "Authorization: Bearer 你的API_KEY"
-`+"```"+`
-
-The response should include the ANI entity metadata for your bot.
+The response includes your ANI bot identity and confirms the token, URL, and network path are correct.
 
 ## Identity Setup
 
@@ -224,8 +204,8 @@ WorkingDirectory=/home/ubuntu/my-bot
 ExecStart=/home/ubuntu/my-bot/venv/bin/python bot.py
 Restart=always
 RestartSec=5
-Environment=AGENT_IM_TOKEN=你的密钥
-Environment=AGENT_IM_BASE=%s
+Environment=ANI_API_KEY=你的密钥
+Environment=ANI_API_BASE=%s/api/v1
 
 [Install]
 WantedBy=multi-user.target
@@ -263,8 +243,8 @@ WantedBy=multi-user.target
 | /onboarding-guide | GET | 本文档 |
 
 ---
-*本指南由 Agent-Native IM 平台自动生成。如有疑问，请联系平台管理员。*
-`, serverURL, serverURL, wsURL, serverURL, serverURL, serverURL, serverURL, serverURL)
+*本指南由 Agent-Native IM 平台自动生成。完整文档请访问 %s/docs。*
+`, serverURL, serverURL, serverURL, serverURL, serverURL, serverURL, wsURL, serverURL, serverURL, wsURL, serverURL, serverURL, serverURL, serverURL)
 
 	format := c.DefaultQuery("format", "text")
 	if format == "json" {

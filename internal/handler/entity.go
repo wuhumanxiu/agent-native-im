@@ -174,54 +174,24 @@ func (s *Server) HandleCreateEntity(c *gin.Context) {
 		}
 	}
 
-	markdownDoc := fmt.Sprintf(`# OpenClaw Access Pack — %s
+	markdownDoc := fmt.Sprintf(`# ANI Bot Access Pack — %s
 
-## Connection Credentials
+## Credentials
 
 | 项目 | 值 |
 |------|---|
-| API Base | `+"`%s/api/v1`"+` |
-| WebSocket | `+"`%s/api/v1/ws`"+` |
+| ANI_SERVER_URL | `+"`%s`"+` |
+| ANI_API_BASE | `+"`%s/api/v1`"+` |
+| ANI_WS_URL | `+"`%s/api/v1/ws`"+` |
 | `+keyLabel+` | `+"`%s`"+` |
 
 ## Important
 
 `+keyNote+`
-- This access pack is intended for the ANI OpenClaw channel plugin only.
-- If OpenClaw is already running, update the ANI config first and then ask the user to reconnect or restart the gateway if ANI does not appear online.
+- This compact pack gives an AI agent the identity, token, and URLs it needs to self-onboard.
+- Full docs live at %s/docs.
 
-**OpenClaw onboarding guide:** %s/api/v1/onboarding-guide
-**LLM output format guide:** %s/api/v1/skill-template?format=text
-
-## Quick Start (OpenClaw Plugin)
-
-`+"```bash"+`
-npx -y @wuhumanxiu/openclaw-ani-installer install
-npx -y @wuhumanxiu/openclaw-ani-installer update
-npx -y @wuhumanxiu/openclaw-ani-installer doctor
-
-# Trust and enable the ANI plugin
-openclaw config set plugins.allow '["ani"]' --strict-json
-openclaw config set plugins.entries.ani.enabled true
-
-# Configure ANI channel
-openclaw config set channels.ani.serverUrl "%s"
-openclaw config set channels.ani.apiKey "%s"
-
-# Minimum ANI tool access
-openclaw config set tools.profile messaging
-openclaw config set tools.alsoAllow '["ani_send_file","ani_fetch_chat_history_messages","ani_list_conversation_tasks","ani_get_task","ani_create_task","ani_update_task","ani_delete_task"]' --strict-json
-
-# Check whether the gateway is already running
-openclaw gateway status
-`+"```"+`
-
-This is the recommended path for end users. Older OpenClaw releases can have compatibility issues when installing third-party scoped npm plugins directly.
-The installer tracks npm `+"`latest`"+` by default. Use `+"`--version 2026.5.12`"+` only when you need a reproducible or rollback-safe install.
-
-If ANI does not appear online after applying the config, ask the user to reconnect or restart the OpenClaw gateway.
-
-## Identity Setup
+## Identity
 
 - You are the ANI bot `+"`%s`"+`.
 - Your bot handle is `+"`%s`"+`.
@@ -229,15 +199,29 @@ If ANI does not appear online after applying the config, ask the user to reconne
 %s- If your local `+"`IDENTITY.md`"+` is still the default blank template, write this identity into it now.
 - Do not ask the user what your name is if ANI already provides it.
 
-### More Information
+## Agent Setup
 
-- Installer package: https://www.npmjs.com/package/@wuhumanxiu/openclaw-ani-installer
-- Plugin package: https://www.npmjs.com/package/@wuhumanxiu/openclaw-ani
+`+"```bash"+`
+export ANI_SERVER_URL="%s"
+export ANI_API_BASE="%s/api/v1"
+export ANI_WS_URL="%s/api/v1/ws"
+export ANI_API_KEY="%s"
+
+curl "$ANI_API_BASE/me" -H "Authorization: Bearer $ANI_API_KEY"
+curl "%s/api/v1/onboarding-guide"
+`+"```"+`
+
+## Full Docs
+
+- Docs home: %s/docs
+- OpenClaw: %s/docs/openclaw
+- Zebra: %s/docs/zebra
+- Hermes: %s/docs/hermes
+- LLM output format: %s/api/v1/skill-template?format=text
 `,
 		entity.DisplayName,
-		serverURL, wsURL, returnedKey,
-		serverURL, serverURL,
-		serverURL, returnedKey,
+		serverURL, serverURL, wsURL, returnedKey,
+		serverURL,
 		entity.DisplayName,
 		entity.BotID,
 		entity.PublicID,
@@ -247,8 +231,9 @@ If ANI does not appear online after applying the config, ask the user to reconne
 			}
 			return fmt.Sprintf("- Your role: %s\n", roleHint)
 		}(),
+		serverURL, serverURL, wsURL, returnedKey,
 		serverURL,
-		returnedKey,
+		serverURL, serverURL, serverURL, serverURL, serverURL,
 	)
 
 	OK(c, http.StatusCreated, gin.H{

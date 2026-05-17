@@ -38,8 +38,8 @@ func TestCreateBot(t *testing.T) {
 	if !strings.Contains(markdownDoc, apiKey) {
 		t.Fatal("markdown_doc should contain the API key")
 	}
-	if !strings.Contains(markdownDoc, "OpenClaw Access Pack") {
-		t.Fatal("markdown_doc should default to the OpenClaw access pack")
+	if !strings.Contains(markdownDoc, "ANI Bot Access Pack") {
+		t.Fatal("markdown_doc should default to the compact ANI bot access pack")
 	}
 	if strings.Contains(markdownDoc, "Bootstrap") {
 		t.Fatal("markdown_doc should not mention Bootstrap")
@@ -47,8 +47,11 @@ func TestCreateBot(t *testing.T) {
 	if strings.Contains(markdownDoc, "agent-native-im-sdk-python") {
 		t.Fatal("markdown_doc should not direct OpenClaw users to the Python SDK")
 	}
-	if !strings.Contains(markdownDoc, "npx -y @wuhumanxiu/openclaw-ani-installer install") {
-		t.Fatal("markdown_doc should contain the recommended installer path")
+	if !strings.Contains(markdownDoc, "/docs/openclaw") || !strings.Contains(markdownDoc, "/docs/zebra") || !strings.Contains(markdownDoc, "/docs/hermes") {
+		t.Fatal("markdown_doc should link to the docs site integration pages")
+	}
+	if strings.Contains(markdownDoc, "npx -y @wuhumanxiu/openclaw-ani-installer install") {
+		t.Fatal("markdown_doc should not embed the long installer walkthrough")
 	}
 	if strings.Contains(markdownDoc, "Entity ID") {
 		t.Fatal("markdown_doc should not include obsolete entity id guidance")
@@ -56,7 +59,7 @@ func TestCreateBot(t *testing.T) {
 	if strings.Contains(markdownDoc, "group:web") {
 		t.Fatal("markdown_doc should not include unrelated web tool permissions")
 	}
-	if !strings.Contains(markdownDoc, "Identity Setup") {
+	if !strings.Contains(markdownDoc, "## Identity") {
 		t.Fatal("markdown_doc should include identity setup guidance")
 	}
 	if !strings.Contains(markdownDoc, "You are the ANI bot `Test Agent`.") {
