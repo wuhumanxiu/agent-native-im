@@ -103,7 +103,7 @@ This document outlines the security features and best practices implemented in t
 ## Reporting Security Issues
 
 If you discover a security vulnerability, please report it to:
-- Email: security@wuzhi-ai.com
+- Email: security@wuhu-manxiu.com
 - Do not create public GitHub issues for security vulnerabilities
 
 ## Security Audit History
