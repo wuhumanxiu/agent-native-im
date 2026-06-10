@@ -1,6 +1,6 @@
 {
   "generatedFrom": "internal/handler/router.go",
-  "routeCount": 116,
+  "routeCount": 117,
   "routes": [
     {
       "method": "DELETE",
@@ -441,6 +441,10 @@
     {
       "method": "PUT",
       "path": "/api/v1/conversations/{id}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/conversations/{id}/participants/{entityId}"
     },
     {
       "method": "PUT",
