@@ -403,7 +403,7 @@ await ctx.mention(
 **So that** I can collaborate on documents, images, and other media
 
 **Acceptance Criteria:**
-- [ ] Can upload files up to 32 MB via `POST /files/upload`
+- [ ] Can upload files up to 64 MB via `POST /files/upload`
 - [ ] Allowed file types: images, audio, video, text, PDF, Office documents, archives
 - [ ] Uploaded files return a URL, filename, and size
 - [ ] File names are sanitized to avoid encoding issues (safe format: `YYYYMMDD_HHMMSS_hex.ext`)

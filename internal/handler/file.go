@@ -17,7 +17,7 @@ import (
 	"github.com/wuhumanxiu/agent-native-im/internal/model"
 )
 
-const maxUploadSize = 32 << 20 // 32 MB
+const maxUploadSize = 64 << 20 // 64 MB
 
 var blockedUploadExtensions = map[string]bool{
 	"":     true,
@@ -88,7 +88,7 @@ func (s *Server) HandleFileUpload(c *gin.Context) {
 
 	// Parse the entire multipart form first so both file and form fields are available
 	if err := c.Request.ParseMultipartForm(maxUploadSize); err != nil {
-		Fail(c, http.StatusBadRequest, "file is required (max 32MB)")
+		Fail(c, http.StatusBadRequest, "file is required (max 64MB)")
 		return
 	}
 
@@ -105,7 +105,7 @@ func (s *Server) HandleFileUpload(c *gin.Context) {
 
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		Fail(c, http.StatusBadRequest, "file is required (max 32MB)")
+		Fail(c, http.StatusBadRequest, "file is required (max 64MB)")
 		return
 	}
 	defer file.Close()

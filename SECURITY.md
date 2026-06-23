@@ -21,7 +21,7 @@ This document outlines the security features and best practices implemented in t
 
 ### Input Validation
 - ✅ Password complexity requirements (8+ chars, uppercase, lowercase, numbers)
-- ✅ File upload size limits (32MB max)
+- ✅ File upload size limits (64MB max)
 - ✅ Metadata size limits (10KB max)
 - ✅ MIME type validation for uploads
 - ✅ Status field validation (whitelist only)

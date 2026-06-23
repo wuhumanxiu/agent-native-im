@@ -79,7 +79,7 @@ Production convention:
 - Send, revoke (2-minute window), edit (`PATCH` with layer merge)
 - Search: per-conversation (`GET /conversations/:id/search?q=`) and global
 - Reactions (emoji per message)
-- Attachments: images, audio, video, files (up to 32 MB)
+- Attachments: images, audio, video, files (up to 64 MB)
 - Streaming: `stream_start` / `stream_delta` / `stream_end` lifecycle via WebSocket
 
 ### Entities (Bots & Users)

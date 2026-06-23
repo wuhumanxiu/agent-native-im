@@ -1114,7 +1114,7 @@ Upload a file (multipart form).
 - **Auth**: Required
 - **Rate limit**: File limiter
 - **Content-Type**: `multipart/form-data`
-- **Form field**: `file` (max 32MB)
+- **Form field**: `file` (max 64MB)
 - **Allowed types**: image/*, audio/*, video/*, text/*, PDF, JSON, ZIP, TAR, GZIP, MS Office formats
 - **Response** `201`:
   ```json

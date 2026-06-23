@@ -525,7 +525,7 @@ The new `api_key` is shown only once. Store it securely. The `disconnected` fiel
 
 ## 16. File Upload (New in v3.0)
 
-Upload files via multipart form data. Max file size: 32 MB.
+Upload files via multipart form data. Max file size: 64 MB.
 
 ```bash
 curl -X POST http://localhost:9800/api/v1/files/upload \
@@ -1044,7 +1044,7 @@ while True:
 | GET | `/api/v1/tasks/:taskId` | Full | Get task details |
 | PUT | `/api/v1/tasks/:taskId` | Full | Update task |
 | DELETE | `/api/v1/tasks/:taskId` | Full | Delete task |
-| POST | `/api/v1/files/upload` | Full | Upload file (multipart, 32MB max) |
+| POST | `/api/v1/files/upload` | Full | Upload file (multipart, 64MB max) |
 | POST | `/api/v1/push/subscribe` | Full | Register push subscription |
 | POST | `/api/v1/push/unsubscribe` | Full | Remove push subscription |
 | GET | `/api/v1/updates` | Full | Long polling |
