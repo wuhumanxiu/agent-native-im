@@ -1,0 +1,11 @@
+.git
+.github
+/agent-im
+/agent-im-server
+/server
+bin/
+data/
+tmp/
+*.log
+*.test
+coverage*
